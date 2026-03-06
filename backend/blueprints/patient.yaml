@@ -1,5 +1,39 @@
 name: Patient
 module: Clinical
+description: "Core patient record"
+
+# Control how and where this shows up in the UI
+ui:
+  show_in_sidebar: true
+  icon: "user"
+  default_view: "dashboard"
+
+# Define relational connections to other modules
+associations:
+  - type: has_many
+    target: Encounter
+    foreign_key: patient_id
+
+# Define the tabs/pages available when viewing a single record
+views:
+  - name: Dashboard
+    type: summary
+  - name: Encounters
+    type: association
+    target: Encounter
+  - name: Comments
+    type: comments
+  - name: Audit Trail
+    type: history
+  - name: Analytics
+    type: custom
+
+# Define where custom code should be loaded from
+overrides:
+  backend_router: "routers/patient.py"
+  frontend_view: "pages/custom/PatientView.tsx"
+  frontend_analytics: "pages/custom/PatientAnalytics.tsx"
+
 fields:
   - name: first_name
     type: String

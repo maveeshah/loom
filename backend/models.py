@@ -1,7 +1,18 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
+
+class Document(Base):
+    __tablename__ = 'documents'
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer)
+    title = Column(String)
+    file_url = Column(String)
+    uploaded_at = Column(DateTime, default=func.now())
+    patient_id = Column(Integer, ForeignKey('patients.id'))
+    patient = relationship('Patient')
 
 class Note(Base):
     __tablename__ = 'notes'
@@ -25,12 +36,25 @@ class Humans(Base):
     zip = Column(String)
     country = Column(String)
 
-class Raja(Base):
-    __tablename__ = 'rajas'
+class AuditLog(Base):
+    __tablename__ = 'auditlogs'
     id = Column(Integer, primary_key=True, index=True)
-    cast = Column(String)
-    old = Column(String)
-    how = Column(String)
+    model_name = Column(String)
+    record_id = Column(Integer)
+    action = Column(String)
+    changes = Column(String)
+    actor = Column(String, default='System User')
+    timestamp = Column(DateTime, default=func.now())
+
+class Encounter(Base):
+    __tablename__ = 'encounters'
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer)
+    encounter_date = Column(DateTime, default=func.now())
+    type = Column(String)
+    status = Column(String, default='Scheduled')
+    patient_id = Column(Integer, ForeignKey('patients.id'))
+    patient = relationship('Patient')
 
 class User(Base):
     __tablename__ = 'users'
@@ -48,6 +72,16 @@ class Patient(Base):
     last_name = Column(String)
     age = Column(Integer)
     is_active = Column(Boolean, default=True)
+    encounters = relationship('Encounter')
+
+class Comment(Base):
+    __tablename__ = 'comments'
+    id = Column(Integer, primary_key=True, index=True)
+    model_name = Column(String)
+    record_id = Column(Integer)
+    content = Column(String)
+    author = Column(String, default='System User')
+    created_at = Column(DateTime, default=func.now())
 
 class Projects(Base):
     __tablename__ = 'projectss'

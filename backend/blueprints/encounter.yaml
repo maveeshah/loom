@@ -1,0 +1,35 @@
+name: Encounter
+module: Clinical
+description: "A patient visit or interaction"
+
+ui:
+  show_in_sidebar: false # Hide from sidebar because it's usually accessed from Patient
+  icon: "calendar"
+  default_view: "dashboard"
+
+associations:
+  - type: belongs_to
+    target: Patient
+    foreign_key: patient_id
+
+views:
+  - name: Dashboard
+    type: summary
+  - name: Comments
+    type: comments
+  - name: Audit Trail
+    type: history
+
+fields:
+  - name: patient_id
+    type: Integer
+    required: true
+  - name: encounter_date
+    type: DateTime
+    default: now()
+  - name: type
+    type: String
+    required: true
+  - name: status
+    type: String
+    default: "Scheduled"

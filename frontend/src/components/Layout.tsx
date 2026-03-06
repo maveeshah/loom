@@ -62,40 +62,45 @@ export default function Layout({ children }: LayoutProps) {
                     </Link>
 
                     {/* Module Groups */}
-                    {Object.entries(modules).map(([group, items]) => (
-                        <div key={group} className="pt-3">
-                            <button
-                                onClick={() => toggleGroup(group)}
-                                className="flex items-center justify-between w-full px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
-                            >
-                                {group}
-                                <svg
-                                    className={`w-3 h-3 transition-transform ${openGroups[group] ? '' : '-rotate-90'}`}
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
+                    {Object.entries(modules).map(([group, items]) => {
+                        const visibleItems = items.filter(item => (item as any).ui?.show_in_sidebar !== false);
+                        if (visibleItems.length === 0) return null;
 
-                            {openGroups[group] && (
-                                <div className="mt-1 space-y-0.5">
-                                    {items.map(item => (
-                                        <Link
-                                            key={item.slug}
-                                            to={`/app/${item.slug}`}
-                                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${isActive(item.slug)
-                                                ? 'bg-blue-600/20 text-blue-400 font-medium'
-                                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                                }`}
-                                        >
-                                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                                            {item.name}
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                        return (
+                            <div key={group} className="pt-3">
+                                <button
+                                    onClick={() => toggleGroup(group)}
+                                    className="flex items-center justify-between w-full px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    {group}
+                                    <svg
+                                        className={`w-3 h-3 transition-transform ${openGroups[group] ? '' : '-rotate-90'}`}
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                {openGroups[group] && (
+                                    <div className="mt-1 space-y-0.5">
+                                        {visibleItems.map(item => (
+                                            <Link
+                                                key={item.slug}
+                                                to={`/app/${item.slug}`}
+                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${isActive(item.slug)
+                                                    ? 'bg-blue-600/20 text-blue-400 font-medium'
+                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                                    }`}
+                                            >
+                                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                                                {item.name}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </nav>
             </aside>
 

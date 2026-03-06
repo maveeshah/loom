@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import get_db
@@ -7,6 +7,8 @@ import glob
 import yaml
 import inspect
 import importlib
+import json
+from datetime import datetime
 
 app = FastAPI(title="Viemed API")
 
@@ -45,29 +47,43 @@ def load_blueprints():
 
 # ─── Custom Routers (Overrides) ──────────────────────────────────────
 
-# Load any custom router overrides from the routers/ directory
-for router_file in glob.glob("routers/*.py"):
-    if router_file.endswith("__init__.py"):
-        continue
-    # Convert 'routers/patient.py' -> 'routers.patient'
-    module_name = router_file.replace("/", ".").replace("\\", ".")[:-3]
-    module = importlib.import_module(module_name)
-    if hasattr(module, "router"):
-        app.include_router(module.router)
-
+# Load any custom router overrides specifically mentioned in blueprints
+for bp in load_blueprints():
+    override_path = bp.get("overrides", {}).get("backend_router")
+    if override_path and override_path.endswith(".py"):
+        # Convert 'routers/patient.py' -> 'routers.patient'
+        module_name = override_path.replace("/", ".").replace("\\", ".")[:-3]
+        try:
+            module = importlib.import_module(module_name)
+            if hasattr(module, "router"):
+                app.include_router(module.router)
+                print(f"Loaded custom router for {bp['name']} from {override_path}")
+        except ModuleNotFoundError as e:
+            print(
+                f"Warning: Could not load router override {override_path} for {bp['name']}: {e}"
+            )
 
 # ─── Module Registry ────────────────────────────────────────────────
 
 
 @app.get("/v1/modules")
 def list_modules():
-    """Return all modules grouped by their module category."""
+    """Return all modules grouped by their module category, including full UI metadata."""
     grouped: dict = {}
     for bp in load_blueprints():
         name = bp["name"]
         module_group = bp.get("module", "Other")
         slug = name.lower()
-        grouped.setdefault(module_group, []).append({"name": name, "slug": slug})
+
+        # Include ui, views, and frontend overrides to drive the frontend UI
+        module_data = {
+            "name": name,
+            "slug": slug,
+            "ui": bp.get("ui", {}),
+            "views": bp.get("views", []),
+            "overrides": bp.get("overrides", {}),
+        }
+        grouped.setdefault(module_group, []).append(module_data)
     return grouped
 
 
@@ -83,10 +99,44 @@ def get_module_definition(model_name: str):
 # ─── Records CRUD ────────────────────────────────────────────────────
 
 
+def log_audit(
+    db: Session,
+    model_name: str,
+    record_id: int,
+    action: str,
+    changes: dict = None,
+    actor: str = "System User",
+):
+    """Helper to save an audit log entry."""
+    # Prevent infinite loop if we are creating an audit log itself
+    if model_name.lower() in ("auditlog", "comment"):
+        return
+    try:
+        AuditModel = get_model_by_name("AuditLog")
+        log = AuditModel(
+            model_name=model_name,
+            record_id=record_id,
+            action=action,
+            changes=json.dumps(changes) if changes else None,
+            actor=actor,
+            timestamp=datetime.utcnow(),
+        )
+        db.add(log)
+    except Exception as e:
+        print(f"Failed to log audit: {e}")
+
+
 @app.get("/v1/app/{model_name}")
-def list_records(model_name: str, db: Session = Depends(get_db)):
+def list_records(model_name: str, request: Request, db: Session = Depends(get_db)):
     model = get_model_by_name(model_name)
-    return [model_to_dict(r) for r in db.query(model).all()]
+    query = db.query(model)
+
+    # Generic filtering based on query params
+    for key, value in request.query_params.items():
+        if hasattr(model, key):
+            query = query.filter(getattr(model, key) == value)
+
+    return [model_to_dict(r) for r in query.all()]
 
 
 @app.post("/v1/app/{model_name}", status_code=201)
@@ -96,6 +146,8 @@ def create_record(model_name: str, data: dict, db: Session = Depends(get_db)):
     db.add(instance)
     db.commit()
     db.refresh(instance)
+
+    log_audit(db, model_name, instance.id, "Created", changes=data)
     return model_to_dict(instance)
 
 
@@ -116,11 +168,19 @@ def update_record(
     instance = db.query(model).filter(model.id == record_id).first()
     if not instance:
         raise HTTPException(status_code=404, detail="Record not found")
+
+    changes = {}
     for key, value in data.items():
         if hasattr(instance, key):
+            old_value = getattr(instance, key)
+            if old_value != value:
+                changes[key] = {"old": old_value, "new": value}
             setattr(instance, key, value)
+
     db.commit()
     db.refresh(instance)
+    if changes:
+        log_audit(db, model_name, instance.id, "Updated", changes=changes)
     return model_to_dict(instance)
 
 
@@ -130,6 +190,10 @@ def delete_record(model_name: str, record_id: int, db: Session = Depends(get_db)
     instance = db.query(model).filter(model.id == record_id).first()
     if not instance:
         raise HTTPException(status_code=404, detail="Record not found")
+
+    old_data = model_to_dict(instance)
     db.delete(instance)
     db.commit()
+
+    log_audit(db, model_name, record_id, "Deleted", changes=old_data)
     return None

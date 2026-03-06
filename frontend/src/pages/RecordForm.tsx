@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../api';
 
@@ -18,6 +18,7 @@ const FIELD_TYPE_MAP: Record<string, string> = {
 export default function RecordForm() {
     const { module, id } = useParams<{ module: string; id?: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const isEditing = Boolean(id);
 
     const [definition, setDefinition] = useState<any>(null);
@@ -39,12 +40,17 @@ export default function RecordForm() {
                     const { id: _, ...rest } = existing;
                     setFormData(rest);
                 } else {
-                    // Set defaults from blueprint
+                    // Set defaults from blueprint and query params
                     const defaults: Record<string, any> = {};
+                    const params = new URLSearchParams(location.search);
                     def.fields?.forEach((f: any) => {
                         const isAutomatic = f.default === 'now()' || f.onupdate;
                         if (!isAutomatic) {
-                            if (f.default !== undefined) {
+                            if (params.has(f.name)) {
+                                defaults[f.name] = ['Integer', 'Float'].includes(f.type)
+                                    ? Number(params.get(f.name))
+                                    : params.get(f.name);
+                            } else if (f.default !== undefined) {
                                 defaults[f.name] = f.default;
                             } else {
                                 defaults[f.name] = f.type === 'Boolean' ? false : '';
@@ -56,7 +62,7 @@ export default function RecordForm() {
             })
             .catch(err => setError(err.message))
             .finally(() => setLoading(false));
-    }, [module, id]);
+    }, [module, id, location.search]);
 
     const handleChange = (field: any, value: any) => {
         setFormData(prev => ({ ...prev, [field.name]: value }));

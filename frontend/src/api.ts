@@ -13,13 +13,36 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return res.json();
 }
 
+export interface ModuleDefinition {
+    name: string;
+    slug: string;
+    ui: {
+        show_in_sidebar?: boolean;
+        icon?: string;
+        default_view?: string;
+    };
+    views: {
+        name: string;
+        type: 'summary' | 'association' | 'comments' | 'history' | 'custom';
+        target?: string;
+    }[];
+    overrides: {
+        backend_router?: string;
+        frontend_view?: string;
+        frontend_analytics?: string;
+    };
+}
+
 export const api = {
     // Module registry
-    fetchModules: () => request<Record<string, { name: string; slug: string }[]>>('/v1/modules'),
+    fetchModules: () => request<Record<string, ModuleDefinition[]>>('/v1/modules'),
     fetchModuleDefinition: (slug: string) => request<any>(`/v1/modules/${slug}`),
 
     // Records CRUD
-    fetchRecords: (slug: string) => request<any[]>(`/v1/app/${slug}`),
+    fetchRecords: (slug: string, filters?: Record<string, any>) => {
+        const query = filters ? `?${new URLSearchParams(filters).toString()}` : '';
+        return request<any[]>(`/v1/app/${slug}${query}`);
+    },
     fetchRecord: (slug: string, id: number) => request<any>(`/v1/app/${slug}/${id}`),
     createRecord: (slug: string, data: Record<string, any>) =>
         request<any>(`/v1/app/${slug}`, { method: 'POST', body: JSON.stringify(data) }),

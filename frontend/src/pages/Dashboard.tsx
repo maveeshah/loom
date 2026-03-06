@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../api';
-
-interface ModuleGroup {
-    [group: string]: { name: string; slug: string }[];
-}
+import type { ModuleDefinition } from '../api';
 
 export default function Dashboard() {
-    const [modules, setModules] = useState<ModuleGroup>({});
-    const navigate = useNavigate();
+    const [modules, setModules] = useState<Record<string, ModuleDefinition[]>>({});
 
     useEffect(() => {
         api.fetchModules().then(setModules);
     }, []);
 
     const allModules = Object.entries(modules).flatMap(([group, items]) =>
-        items.map(item => ({ ...item, group }))
+        items.filter((item) => item.ui?.show_in_sidebar !== false)
+            .map((item) => ({ ...item, group }))
     );
 
     const groupColors: Record<string, string> = {
@@ -64,37 +61,42 @@ export default function Dashboard() {
                 </div>
 
                 {/* Module Groups */}
-                {Object.entries(modules).map(([group, items]) => (
-                    <div key={group} className="mb-8">
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="text-lg">{getGroupIcon(group)}</span>
-                            <h2 className="text-base font-semibold text-slate-700">{group}</h2>
-                            <span className="badge bg-slate-100 text-slate-500">{items.length}</span>
+                {Object.entries(modules).map(([group, items]) => {
+                    const visibleItems = items.filter(item => item.ui?.show_in_sidebar !== false);
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                        <div key={group} className="mb-8">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-lg">{getGroupIcon(group)}</span>
+                                <h2 className="text-base font-semibold text-slate-700">{group}</h2>
+                                <span className="badge bg-slate-100 text-slate-500">{visibleItems.length}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {visibleItems.map(item => (
+                                    <Link
+                                        key={item.slug}
+                                        to={`/app/${item.slug}`}
+                                        className="card p-5 hover:shadow-md hover:border-blue-300 transition-all duration-200 group cursor-pointer"
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <span className={`badge border ${getGroupColor(group)}`}>
+                                                {group}
+                                            </span>
+                                            <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-base font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                            {item.name}
+                                        </h3>
+                                        <p className="text-xs text-slate-400 mt-1">View and manage {item.name.toLowerCase()} records</p>
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {items.map(item => (
-                                <Link
-                                    key={item.slug}
-                                    to={`/app/${item.slug}`}
-                                    className="card p-5 hover:shadow-md hover:border-blue-300 transition-all duration-200 group cursor-pointer"
-                                >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <span className={`badge border ${getGroupColor(group)}`}>
-                                            {group}
-                                        </span>
-                                        <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-base font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-                                        {item.name}
-                                    </h3>
-                                    <p className="text-xs text-slate-400 mt-1">View and manage {item.name.toLowerCase()} records</p>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {allModules.length === 0 && (
                     <div className="card p-12 text-center">
