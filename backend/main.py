@@ -6,6 +6,7 @@ import models
 import glob
 import yaml
 import inspect
+import importlib
 
 app = FastAPI(title="Viemed API")
 
@@ -40,6 +41,19 @@ def load_blueprints():
             bp = yaml.safe_load(f)
             blueprints.append(bp)
     return blueprints
+
+
+# ─── Custom Routers (Overrides) ──────────────────────────────────────
+
+# Load any custom router overrides from the routers/ directory
+for router_file in glob.glob("routers/*.py"):
+    if router_file.endswith("__init__.py"):
+        continue
+    # Convert 'routers/patient.py' -> 'routers.patient'
+    module_name = router_file.replace("/", ".").replace("\\", ".")[:-3]
+    module = importlib.import_module(module_name)
+    if hasattr(module, "router"):
+        app.include_router(module.router)
 
 
 # ─── Module Registry ────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func
 from datetime import datetime
 from database import Base
 
@@ -48,3 +48,15 @@ class Patient(Base):
     last_name = Column(String)
     age = Column(Integer)
     is_active = Column(Boolean, default=True)
+
+class Projects(Base):
+    __tablename__ = 'projectss'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(String)
+    status = Column(String)
+    start_date = Column(Date)
+    end_date = Column(Date)
+    budget = Column(Float)
+    team_members = Column(JSON)
+    tasks = Column(JSON)

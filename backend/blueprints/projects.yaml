@@ -1,0 +1,29 @@
+name: Projects
+module: Admin
+fields:
+  - name: name
+    type: String
+    required: true
+  - name: description
+    type: String
+    required: true
+  - name: status
+    type: String
+    required: true
+  - name: start_date
+    type: Date
+    required: true
+  - name: end_date
+    type: Date
+    required: true
+  - name: budget
+    type: Float
+    required: true
+  - name: team_members
+    type: ManyToMany
+    required: true
+    target: Humans
+  - name: tasks
+    type: OneToMany
+    required: true
+    target: Tasks

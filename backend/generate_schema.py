@@ -7,7 +7,7 @@ def generate_all_models():
 
     # Start with the necessary imports for your models
     content = [
-        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, func",
+        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func",
         "from datetime import datetime",
         "from database import Base\n\n",
     ]
@@ -27,6 +27,10 @@ def generate_all_models():
         for field in fields:
             f_name = field["name"]
             f_type = field["type"]
+
+            # Auto-map relationships to JSON arrays for prototyping
+            if f_type in ["ManyToMany", "OneToMany", "ManyToOne", "OneToOne"]:
+                f_type = "JSON"
             f_default = field.get("default")
 
             # Handle defaults if they exist

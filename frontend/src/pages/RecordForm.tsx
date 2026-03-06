@@ -9,6 +9,10 @@ const FIELD_TYPE_MAP: Record<string, string> = {
     Float: 'number',
     Boolean: 'checkbox',
     DateTime: 'datetime-local',
+    Date: 'date',
+    JSON: 'text',
+    ManyToMany: 'text',
+    OneToMany: 'text',
 };
 
 export default function RecordForm() {
