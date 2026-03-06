@@ -1,4 +1,5 @@
 name: Note
+module: Clinical
 fields:
   - name: title
     type: String

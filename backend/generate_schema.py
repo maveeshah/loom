@@ -7,7 +7,7 @@ def generate_all_models():
 
     # Start with the necessary imports for your models
     content = [
-        "from sqlalchemy import Column, Integer, String, Boolean, DateTime",
+        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, func",
         "from datetime import datetime",
         "from database import Base\n\n",
     ]
@@ -30,8 +30,18 @@ def generate_all_models():
             f_default = field.get("default")
 
             # Handle defaults if they exist
+            if f_default == "now()":
+                f_default = "func.now()"
+
+            f_onupdate = field.get("onupdate")
+            if f_onupdate == "now()":
+                f_onupdate = "func.now()"
+
             default_str = f", default={f_default}" if f_default is not None else ""
-            model_code += f"    {f_name} = Column({f_type}{default_str})\n"
+            onupdate_str = f", onupdate={f_onupdate}" if f_onupdate is not None else ""
+            model_code += (
+                f"    {f_name} = Column({f_type}{default_str}{onupdate_str})\n"
+            )
 
         content.append(model_code)
 

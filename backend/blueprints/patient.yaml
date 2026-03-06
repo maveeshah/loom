@@ -1,4 +1,5 @@
 name: Patient
+module: Clinical
 fields:
   - name: first_name
     type: String

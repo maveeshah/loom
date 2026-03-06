@@ -1,4 +1,5 @@
 name: User
+module: Admin
 fields:
   - name: email
     type: String

@@ -1,0 +1,12 @@
+name: Raja
+module: Real Life
+fields:
+  - name: cast
+    type: String
+    required: true
+  - name: old
+    type: String
+    required: true
+  - name: how
+    type: String
+    required: true

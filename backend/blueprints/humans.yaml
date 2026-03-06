@@ -1,0 +1,31 @@
+name: Humans
+module: Real Life
+fields:
+  - name: first_name
+    type: String
+    required: true
+  - name: last_name
+    type: String
+    required: true
+  - name: email
+    type: String
+    required: true
+  - name: phone
+    type: String
+    required: true
+  - name: address
+    type: String
+    required: true
+  - name: city
+    type: String
+    required: true
+  - name: state
+    type: String
+    required: true
+  - name: zip
+    type: String
+    required: true
+  - name: country
+    type: String
+    required: true
+  
