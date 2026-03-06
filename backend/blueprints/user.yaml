@@ -1,0 +1,18 @@
+name: User
+fields:
+  - name: email
+    type: String
+    required: true
+  - name: full_name
+    type: String
+    required: true
+  - name: is_active
+    type: Boolean
+    default: true
+  - name: created_at
+    type: DateTime
+    default: now()
+  - name: updated_at
+    type: DateTime
+    default: now()
+    onupdate: now()

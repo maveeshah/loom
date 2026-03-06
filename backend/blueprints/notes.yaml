@@ -1,0 +1,18 @@
+name: Note
+fields:
+  - name: title
+    type: String
+    required: true
+  - name: content
+    type: String
+    required: true
+  - name: is_done
+    type: Boolean
+    default: false
+  - name: created_at
+    type: DateTime
+    default: now()
+  - name: updated_at
+    type: DateTime
+    default: now()
+    onupdate: now()

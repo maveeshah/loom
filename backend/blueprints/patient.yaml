@@ -1,0 +1,13 @@
+name: Patient
+fields:
+  - name: first_name
+    type: String
+    required: true
+  - name: last_name
+    type: String
+    required: true
+  - name: age
+    type: Integer
+  - name: is_active
+    type: Boolean
+    default: true
