@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+ENV/
+.env
+.git
+.vscode
+.idea
+Dockerfile
+README.md
+alembic.ini

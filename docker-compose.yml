@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=mavee
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=viemed
+    ports:
+      - "5433:5432"
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8010:8000"
+    environment:
+      - DATABASE_URL=postgresql://mavee:password123@db:5432/viemed
+    depends_on:
+      - db
+    command: >
+      sh -c "alembic upgrade head && 
+             uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Prevents local node_modules from overwriting container ones
+    ports:
+      - "3010:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8010
+    depends_on:
+      - backend
+volumes:
+  postgres_data:
+
+

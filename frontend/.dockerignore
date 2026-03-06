@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-ssr/
+build/
+.npm
+.env
+.env.*
+!.env.example
+.git
+.vscode
+.idea
+Dockerfile
+README.md
