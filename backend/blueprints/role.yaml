@@ -2,7 +2,7 @@ name: Role
 module: Admin
 description: Role-based permissions
 ui:
-  show_in_sidebar: true
+  show_in_sidebar: false
   icon: shield
   default_view: dashboard
 views:

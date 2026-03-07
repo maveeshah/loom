@@ -7,7 +7,10 @@ import {
     MenuFoldOutlined,
     ArrowLeftOutlined,
     LogoutOutlined,
-    BlockOutlined
+    BlockOutlined,
+    SettingOutlined,
+    TeamOutlined,
+    SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api';
@@ -64,6 +67,16 @@ export default function Layout({ children }: LayoutProps) {
                 })),
             };
         }).filter(Boolean),
+        ...(hasPermission('admin:user:read') || hasPermission('admin:role:read') || hasPermission('*:*') ? [{
+            key: 'admin',
+            label: 'Administration',
+            icon: <SettingOutlined />,
+            children: [
+                { key: 'admin-dashboard', label: <Link to="/admin/dashboard">Admin Dashboard</Link>, icon: <DashboardOutlined /> },
+                { key: 'users', label: <Link to="/admin/users">User Management</Link>, icon: <TeamOutlined /> },
+                { key: 'roles', label: <Link to="/admin/roles">Role Management</Link>, icon: <SafetyCertificateOutlined /> }
+            ]
+        }] : [])
     ];
 
     const getSelectedKeys = () => {

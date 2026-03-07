@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import DynamicRoute from './pages/DynamicRoute';
 import Login from './pages/Login';
+import UserManagement from './pages/UserManagement';
+import RoleManagement from './pages/RoleManagement';
+import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -44,6 +47,15 @@ function App() {
           } />
           <Route path="/app/:module/:id/edit" element={
             <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute><AdminDashboard /></ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute><UserManagement /></ProtectedRoute>
+          } />
+          <Route path="/admin/roles" element={
+            <ProtectedRoute><RoleManagement /></ProtectedRoute>
           } />
         </Routes>
       </BrowserRouter>
