@@ -11,7 +11,8 @@ import {
     message,
     Breadcrumb,
     Switch,
-    Skeleton
+    Skeleton,
+    Select
 } from 'antd';
 import {
     SaveOutlined,
@@ -152,7 +153,17 @@ export default function RecordForm() {
                                 const isAutomatic = field.default === 'now()' || field.onupdate;
                                 if (isAutomatic) return null;
 
-                                let inputNode = <Input placeholder={`Enter ${field.name.replace(/_/g, ' ')}`} />;
+                                let inputNode = <Input placeholder={`Enter ${field.label || field.name.replace(/_/g, ' ')}`} />;
+
+                                if (field.type === 'Select' && field.options) {
+                                    inputNode = (
+                                        <Select placeholder={`Select ${field.label || field.name}`} className="w-full">
+                                            {field.options.map((opt: string) => (
+                                                <Select.Option key={opt} value={opt}>{opt}</Select.Option>
+                                            ))}
+                                        </Select>
+                                    );
+                                }
 
                                 if (field.type === 'Integer') inputNode = <InputNumber className="w-full" placeholder="0" />;
                                 if (field.type === 'Float') inputNode = <InputNumber className="w-full" step="0.01" placeholder="0.00" />;
@@ -160,7 +171,7 @@ export default function RecordForm() {
                                     <Form.Item
                                         key={field.name}
                                         name={field.name}
-                                        label={field.name.replace(/_/g, ' ')}
+                                        label={field.label || field.name.replace(/_/g, ' ')}
                                         valuePropName="checked"
                                         className="col-span-1"
                                     >
@@ -174,8 +185,8 @@ export default function RecordForm() {
                                     <Form.Item
                                         key={field.name}
                                         name={field.name}
-                                        label={field.name.replace(/_/g, ' ')}
-                                        rules={[{ required: field.required, message: `${field.name} is required` }]}
+                                        label={field.label || field.name.replace(/_/g, ' ')}
+                                        rules={[{ required: field.required, message: `${field.label || field.name} is required` }]}
                                         className={field.type === 'String' ? 'col-span-2' : 'col-span-1'}
                                     >
                                         {inputNode}

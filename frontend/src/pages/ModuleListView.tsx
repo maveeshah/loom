@@ -68,13 +68,13 @@ export default function ModuleListView() {
             sorter: (a: any, b: any) => a.id - b.id,
         },
         ...(definition?.fields?.map((f: any) => ({
-            title: f.name.replace(/_/g, ' '),
+            title: f.label || f.name.replace(/_/g, ' '),
             dataIndex: f.name,
             key: f.name,
             filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => (
                 <div style={{ padding: 8 }}>
                     <Input
-                        placeholder={`Search ${f.name}`}
+                        placeholder={`Search ${f.label || f.name}`}
                         value={selectedKeys[0]}
                         onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
                         onPressEnter={() => confirm()}

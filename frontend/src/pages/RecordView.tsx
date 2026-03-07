@@ -304,7 +304,7 @@ export default function RecordView() {
                         className="modern-descriptions"
                     >
                         {fields.map(field => (
-                            <Descriptions.Item key={field.name} label={field.name.replace(/_/g, ' ')}>
+                            <Descriptions.Item key={field.name} label={field.label || field.name.replace(/_/g, ' ')}>
                                 {record[field.name] === null || record[field.name] === undefined ? (
                                     <Text type="secondary" italic>Not set</Text>
                                 ) : field.type === 'Boolean' ? (
