@@ -1,6 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8010';
 
-const getToken = () => localStorage.getItem('viemed_token');
+const getToken = () => localStorage.getItem('loom_token');
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const token = getToken();
@@ -16,7 +16,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     });
 
     if (res.status === 401) {
-        localStorage.removeItem('viemed_token');
+        localStorage.removeItem('loom_token');
         if (window.location.pathname !== '/login') {
             window.location.href = '/login';
         }
@@ -63,11 +63,11 @@ export const api = {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData.toString()
         });
-        localStorage.setItem('viemed_token', data.access_token);
+        localStorage.setItem('loom_token', data.access_token);
         return data;
     },
     logout: () => {
-        localStorage.removeItem('viemed_token');
+        localStorage.removeItem('loom_token');
         window.location.href = '/login';
     },
 

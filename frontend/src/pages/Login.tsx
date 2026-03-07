@@ -36,7 +36,7 @@ export default function Login() {
                         </svg>
                     </div>
                     <h2 className="text-center text-3xl font-extrabold text-white">
-                        Viemed Portal
+                        Loom Portal
                     </h2>
                     <p className="mt-2 text-center text-sm text-slate-400">
                         Sign in to access your modules
@@ -58,7 +58,7 @@ export default function Login() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 placeholder-slate-500 text-white rounded-t-lg bg-slate-900/50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                placeholder="Email address (admin@viemed.com)"
+                                placeholder="Email address (admin@loom.com)"
                             />
                         </div>
                         <div>
@@ -86,7 +86,7 @@ export default function Login() {
 
                 <div className="text-center">
                     <p className="text-xs text-slate-500">
-                        Demo Account: admin@viemed.com / admin123
+                        Demo Account: admin@loom.com / admin123
                     </p>
                 </div>
             </div>

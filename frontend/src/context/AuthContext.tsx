@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     const fetchUser = async () => {
-        const token = localStorage.getItem('viemed_token');
+        const token = localStorage.getItem('loom_token');
         if (!token) {
             setLoading(false);
             return;
@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const userData = await response.json();
                 setUser(userData);
             } else {
-                localStorage.removeItem('viemed_token');
+                localStorage.removeItem('loom_token');
             }
         } catch (error) {
             console.error("Failed to fetch user:", error);

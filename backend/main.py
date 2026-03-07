@@ -12,7 +12,7 @@ from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
 
-app = FastAPI(title="Viemed API")
+app = FastAPI(title="Loom API")
 
 # Configure CORS
 app.add_middleware(

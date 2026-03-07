@@ -1,9 +1,9 @@
-# Viemed Platform Documentation
+# Loom Platform Documentation
 
-Welcome to the Viemed Platform documentation. This document outlines the architecture, core capabilities, and developer guidelines for the platform.
+Welcome to the Loom Platform documentation. This document outlines the architecture, core capabilities, and developer guidelines for the platform.
 
 ## 1. Overview
-The Viemed platform is a metadata-driven, dynamic Web Application built for structured data management, primarily focused on clinical and generic data models. It consists of a **FastAPI** backend and a **React** (Vite + TypeScript) frontend. 
+The Loom platform is a metadata-driven, dynamic Web Application built for structured data management, primarily focused on clinical and generic data models. It consists of a **FastAPI** backend and a **React** (Vite + TypeScript) frontend. 
 
 The core philosophy of the framework is **Blueprint-driven Development**: Instead of writing boilerplate CRUD (Create, Read, Update, Delete) code for every new entity, developers define the entity structure in YAML blueprints. The backend automatically generates REST APIs and database integrations, while the frontend dynamically renders tables, forms, and views based on those definitions.
 
@@ -83,4 +83,4 @@ Create `backend/routers/invoice.py` to add domain-specific API logic beyond the 
 - **System**: Role, User, AuditLog, Comment, Notes, Projects, Humans.
 
 ## Conclusion
-The Viemed framework enables rapid application development by eliminating low-value boilerplate. Developers only need to write code when implementing complex, domain-specific business logic or unique user interfaces.
+The Loom framework enables rapid application development by eliminating low-value boilerplate. Developers only need to write code when implementing complex, domain-specific business logic or unique user interfaces.

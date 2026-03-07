@@ -1,8 +1,6 @@
-from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
 from auth_utils import get_password_hash
-import json
 
 
 def seed_data():
@@ -22,13 +20,11 @@ def seed_data():
 
         # 2. Create Default Admin User
         admin_user = (
-            db.query(models.User)
-            .filter(models.User.email == "admin@viemed.com")
-            .first()
+            db.query(models.User).filter(models.User.email == "admin@loom.com").first()
         )
         if not admin_user:
             admin_user = models.User(
-                email="admin@viemed.com",
+                email="admin@loom.com",
                 full_name="System Administrator",
                 hashed_password=get_password_hash("admin123"),
                 role_id=admin_role.id,
@@ -36,7 +32,7 @@ def seed_data():
             )
             db.add(admin_user)
             db.commit()
-            print("Created Admin user: admin@viemed.com / admin123")
+            print("Created Admin user: admin@loom.com / admin123")
         else:
             print("Admin user already exists.")
 

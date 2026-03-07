@@ -92,7 +92,7 @@ export default function Layout({ children }: LayoutProps) {
                         </div>
                         {!collapsed && (
                             <Title level={4} style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 800 }}>
-                                Viemed
+                                Loom
                             </Title>
                         )}
                     </div>
