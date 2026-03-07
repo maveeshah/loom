@@ -88,5 +88,15 @@ export const api = {
         request<any>(`/v1/app/${slug}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteRecord: (slug: string, id: number) =>
         request<void>(`/v1/app/${slug}/${id}`, { method: 'DELETE' }),
+
+    // Admin
+    admin: {
+        fetchUsers: () => request<any[]>('/v1/admin/users'),
+        updateUser: (id: number, data: any) => request<any>(`/v1/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        fetchRoles: () => request<any[]>('/v1/admin/roles'),
+        createRole: (data: any) => request<any>('/v1/admin/roles', { method: 'POST', body: JSON.stringify(data) }),
+        updateRole: (id: number, data: any) => request<any>(`/v1/admin/roles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        fetchPermissions: () => request<any[]>('/v1/admin/permissions'),
+    }
 };
 

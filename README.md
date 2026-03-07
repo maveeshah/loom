@@ -20,19 +20,30 @@ Please refer to the following guides for detailed information:
 
 ## Quickstart
 
-### Running the Backend
+### Running with Docker
+
+The entire platform is containerized using Docker. Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed.
+
+#### 1. Build and Start Services
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8010
+docker-compose up --build
 ```
 
-### Running the Frontend
-```bash
-cd frontend
-yarn install
-yarn dev
-```
+This command will:
+- Spin up a **PostgreSQL** database (port `5433`).
+- Start the **FastAPI** backend (port `8010`).
+- Start the **React** (Vite) frontend (port `3010`).
+
+#### 2. Accessing the Platform
+- **Frontend**: [http://localhost:3010](http://localhost:3010)
+- **Backend API Docs**: [http://localhost:8010/docs](http://localhost:8010/docs)
+
+### Common Commands
+
+- **Stop Services**: `docker-compose down`
+- **View Logs**: `docker-compose logs -f`
+- **Restart a specific service**: `docker-compose restart backend`
+- **Run migrations manually**: `docker-compose exec backend alembic upgrade head`
 
 ### Adding Your First Module
 

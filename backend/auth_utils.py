@@ -76,24 +76,23 @@ def check_permissions(user: models.User, required_permission: str):
     Checks if a user has a specific permission.
     required_permission format: "module:action" (e.g., "patient:read")
     """
-    if not user.role or not user.role.permissions:
-        raise HTTPException(
-            status_code=403, detail="Forbidden: No permissions assigned"
-        )
+    if not user.role:
+        raise HTTPException(status_code=403, detail="Forbidden: No role assigned")
 
-    user_perms = user.role.permissions  # This is a JSON list from the DB
+    # Convert Permission objects to a set of codes for efficient lookup
+    user_perm_codes = {p.code for p in user.role.permissions}
 
     # Superadmin wildcard
-    if "*:*" in user_perms:
+    if "*:*" in user_perm_codes:
         return True
 
-    if required_permission in user_perms:
+    if required_permission in user_perm_codes:
         return True
 
     module, action = required_permission.split(":")
 
     # Module wildcard (e.g., "patient:*")
-    if f"{module}:*" in user_perms:
+    if f"{module}:*" in user_perm_codes:
         return True
 
     raise HTTPException(

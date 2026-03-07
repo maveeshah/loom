@@ -7,7 +7,7 @@ interface User {
     full_name: string;
     role: {
         name: string;
-        permissions: string[];
+        permissions: { id: number; code: string; name: string; module: string }[];
     };
 }
 
@@ -74,11 +74,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const hasPermission = (permission: string) => {
         if (!user) return false;
         const perms = user.role?.permissions || [];
-        if (perms.includes('*:*')) return true;
-        if (perms.includes(permission)) return true;
+        const permCodes = perms.map(p => p.code);
+
+        if (permCodes.includes('*:*')) return true;
+        if (permCodes.includes(permission)) return true;
 
         const [module] = permission.split(':');
-        if (perms.includes(`${module}:*`)) return true;
+        if (permCodes.includes(`${module}:*`)) return true;
 
         return false;
     };

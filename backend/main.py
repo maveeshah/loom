@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
+import admin_router
 from plugin_registry import registry
 
 from settings import get_settings, Settings
@@ -99,6 +100,7 @@ def create_app(settings: Settings = None) -> FastAPI:
 
     # Include Authentication Router
     core_router.include_router(auth_router.router)
+    core_router.include_router(admin_router.router)
 
     # Register Backend Plugin Routers
     for plugin_name, manifest in registry.plugins.items():
@@ -143,9 +145,9 @@ def create_app(settings: Settings = None) -> FastAPI:
             except HTTPException:
                 has_permission = False
 
-            if not has_permission and "*:*" not in (
-                current_user.role.permissions or []
-            ):
+            if not has_permission and "*:*" not in [
+                p.code for p in current_user.role.permissions
+            ]:
                 continue
 
             module_data = {
