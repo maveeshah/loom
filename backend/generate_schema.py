@@ -1,9 +1,37 @@
 import yaml
 import glob
 
+from settings import get_settings
+
 
 def generate_all_models():
-    blueprint_files = glob.glob("blueprints/*.yaml")
+    settings = get_settings()
+    blueprint_files: list[str] = []
+
+    # Support multiple blueprint roots (core + plugins/tenants)
+    for root in settings.blueprint_paths:
+        pattern = f"{root.rstrip('/')}" + "/*.yaml"
+        blueprint_files.extend(glob.glob(pattern))
+
+    blueprints = []
+    for blueprint_path in blueprint_files:
+        with open(blueprint_path, "r") as f:
+            blueprints.append(yaml.safe_load(f))
+
+    # FIRST PASS: Map Class Names to Table Names
+    class_to_table = {}
+    for bp in blueprints:
+        name = bp["name"]
+        class_name = name.replace(" ", "")
+        slug = bp.get("slug", name.lower().replace(" ", "_"))
+
+        explicit_table_name = bp.get("table_name")
+        if explicit_table_name:
+            table_name = explicit_table_name
+        else:
+            table_name = slug if slug.endswith("s") else slug + "s"
+
+        class_to_table[class_name] = table_name
 
     # Start with the necessary imports for your models
     content = [
@@ -13,24 +41,25 @@ def generate_all_models():
         "from database import Base\n\n",
     ]
 
-    for blueprint_path in blueprint_files:
-        with open(blueprint_path, "r") as f:
-            blueprint = yaml.safe_load(f)
-
+    # SECOND PASS: Generate Code
+    for blueprint in blueprints:
         name = blueprint["name"]
+        class_name = name.replace(" ", "")
+        table_name = class_to_table[class_name]
+
         fields = blueprint.get("fields", [])
         associations = blueprint.get("associations", [])
 
         # Build the SQLAlchemy Class
-        model_code = f"class {name}(Base):\n"
-        model_code += f"    __tablename__ = '{name.lower() if name.lower().endswith('s') else name.lower() + 's'}'\n"
+        model_code = f"class {class_name}(Base):\n"
+        model_code += f"    __tablename__ = '{table_name}'\n"
         model_code += "    id = Column(Integer, primary_key=True, index=True)\n"
 
         # Collect foreign keys to avoid duplicate column definitions
         fks = [
             assoc.get("foreign_key")
             for assoc in associations
-            if assoc.get("type") == "belongs_to"
+            if assoc.get("type") == "belongs_to" and assoc.get("foreign_key")
         ]
 
         # Generate fields
@@ -69,23 +98,21 @@ def generate_all_models():
             target = assoc.get("target")
             fk_name = assoc.get("foreign_key")
 
+            target_table = class_to_table.get(target, target.lower() + "s")
+
             if assoc_type == "belongs_to":
-                # If this model belongs to another, it needs a foreign key pointing to the target
-                target_table = (
-                    target.lower()
-                    if target.lower().endswith("s")
-                    else target.lower() + "s"
-                )
+                if not fk_name:
+                    fk_name = f"{target.lower()}_id"
                 model_code += f"    {fk_name} = Column(Integer, ForeignKey('{target_table}.id'))\n"
-                # And a relationship
-                # e.g., patient = relationship("Patient", back_populates="encounters")
-                rel_name = target.lower()
+
+                rel_name = (
+                    fk_name.replace("_id", "")
+                    if fk_name.endswith("_id")
+                    else target.lower()
+                )
                 model_code += f"    {rel_name} = relationship('{target}')\n"
 
             elif assoc_type == "has_many":
-                # If this model has many of another, the other model holds the foreign key
-                # We just define the relationship here
-                # e.g., encounters = relationship("Encounter")
                 rel_name = target.lower() + "s"
                 model_code += f"    {rel_name} = relationship('{target}')\n"
 
@@ -101,7 +128,7 @@ def generate_all_models():
     with open("models.py", "w") as f:
         f.write("\n".join(content))
 
-    print(f"🚀 Rebuilt models.py with {len(blueprint_files)} schemas.")
+    print(f"🚀 Rebuilt models.py with {len(blueprints)} schemas.")
 
 
 if __name__ == "__main__":

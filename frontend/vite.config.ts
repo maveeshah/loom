@@ -13,6 +13,12 @@ export default defineConfig({
   ],
   server: {
     host: true, // Needed for Docker
-    port: 3009,
+    port: 3000,
+    proxy: {
+      '/v1': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      }
+    }
   }
 })

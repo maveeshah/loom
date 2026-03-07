@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Better: Let's assume the login returns the user info and we store it, OR we add a /me endpoint.
 
             // I'll add a quick /v1/auth/me to the backend in the next step.
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8010'}/v1/auth/me`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/v1/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 

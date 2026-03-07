@@ -3,11 +3,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from settings import get_settings
+
+settings = get_settings()
+
 # 1. Get the URL from Docker environment variables
 # Note: 'db' is the name of the service in your docker-compose.yml
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://mavee:password123@db:5432/viemed"
-)
+DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
 
 # 2. The Engine is the actual connection to the DB
 engine = create_engine(DATABASE_URL)

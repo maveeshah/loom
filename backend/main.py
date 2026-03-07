@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import get_db
@@ -11,24 +11,9 @@ import json
 from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
+from plugin_registry import registry
 
-app = FastAPI(title="Loom API")
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3009",
-        "http://localhost:3010",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include Authentication Router
-app.include_router(auth_router.router)
+from settings import get_settings, Settings
 
 
 def get_model_by_name(name: str):
@@ -46,80 +31,24 @@ def model_to_dict(instance) -> dict:
     return {c.name: getattr(instance, c.name) for c in instance.__table__.columns}
 
 
-def load_blueprints():
-    """Load all blueprint YAML files and return as a list."""
-    blueprints = []
-    for bp_path in glob.glob("blueprints/*.yaml"):
-        with open(bp_path, "r") as f:
-            bp = yaml.safe_load(f)
-            blueprints.append(bp)
+def load_blueprints(settings: Settings) -> list[dict]:
+    """
+    Load all blueprint YAML files and return them as a list.
+
+    Search paths are controlled by Settings.blueprint_paths, allowing the
+    framework to combine core and plugin/tenant blueprints.
+    """
+
+    blueprints: list[dict] = []
+
+    for root in settings.blueprint_paths:
+        pattern = f"{root.rstrip('/')}" + "/*.yaml"
+        for bp_path in glob.glob(pattern):
+            with open(bp_path, "r") as f:
+                bp = yaml.safe_load(f) or {}
+                blueprints.append(bp)
+
     return blueprints
-
-
-# ─── Custom Routers (Overrides) ──────────────────────────────────────
-
-# Load any custom router overrides specifically mentioned in blueprints
-for bp in load_blueprints():
-    override_path = bp.get("overrides", {}).get("backend_router")
-    if override_path and override_path.endswith(".py"):
-        # Convert 'routers/patient.py' -> 'routers.patient'
-        module_name = override_path.replace("/", ".").replace("\\", ".")[:-3]
-        try:
-            module = importlib.import_module(module_name)
-            if hasattr(module, "router"):
-                app.include_router(module.router)
-                print(f"Loaded custom router for {bp['name']} from {override_path}")
-        except ModuleNotFoundError as e:
-            print(
-                f"Warning: Could not load router override {override_path} for {bp['name']}: {e}"
-            )
-
-# ─── Module Registry ────────────────────────────────────────────────
-
-
-@app.get("/v1/modules")
-def list_modules(current_user: models.User = Depends(get_current_user)):
-    """Return all modules grouped by their module category, including full UI metadata."""
-    grouped: dict = {}
-    for bp in load_blueprints():
-        name = bp["name"]
-        module_group = bp.get("module", "Other")
-        slug = name.lower()
-
-        # Simple check for read permission on the module
-        try:
-            check_permissions(current_user, f"{slug}:read")
-            has_permission = True
-        except HTTPException:
-            has_permission = False
-
-        if not has_permission and "*:*" not in (current_user.role.permissions or []):
-            continue
-
-        module_data = {
-            "name": name,
-            "slug": slug,
-            "ui": bp.get("ui", {}),
-            "views": bp.get("views", []),
-            "overrides": bp.get("overrides", {}),
-        }
-        grouped.setdefault(module_group, []).append(module_data)
-    return grouped
-
-
-@app.get("/v1/modules/{model_name}")
-def get_module_definition(
-    model_name: str, current_user: models.User = Depends(get_current_user)
-):
-    """Return the full field definition for a model."""
-    check_permissions(current_user, f"{model_name.lower()}:read")
-    for bp in load_blueprints():
-        if bp["name"].lower() == model_name.lower():
-            return bp
-    raise HTTPException(status_code=404, detail=f"Module '{model_name}' not found")
-
-
-# ─── Records CRUD ────────────────────────────────────────────────────
 
 
 def log_audit(
@@ -148,123 +77,258 @@ def log_audit(
         print(f"Failed to log audit: {e}")
 
 
-@app.get("/v1/app/{model_name}")
-def list_records(
-    model_name: str,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    check_permissions(current_user, f"{model_name.lower()}:read")
-    model = get_model_by_name(model_name)
-    query = db.query(model)
+def create_app(settings: Settings = None) -> FastAPI:
+    if settings is None:
+        settings = get_settings()
 
-    for key, value in request.query_params.items():
-        if hasattr(model, key):
-            query = query.filter(getattr(model, key) == value)
+    app = FastAPI(title=settings.app_title)
 
-    return [model_to_dict(r) for r in query.all()]
-
-
-@app.post("/v1/app/{model_name}", status_code=201)
-def create_record(
-    model_name: str,
-    data: dict,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    check_permissions(current_user, f"{model_name.lower()}:write")
-    model = get_model_by_name(model_name)
-    instance = model(**data)
-    db.add(instance)
-    db.commit()
-    db.refresh(instance)
-
-    log_audit(
-        db,
-        model_name,
-        instance.id,
-        "Created",
-        changes=data,
-        actor=current_user.full_name,
+    # Configure CORS using central settings
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.allowed_origins],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-    return model_to_dict(instance)
 
+    core_router = APIRouter(prefix=settings.api_prefix)
 
-@app.get("/v1/app/{model_name}/{record_id}")
-def get_record(
-    model_name: str,
-    record_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    check_permissions(current_user, f"{model_name.lower()}:read")
-    model = get_model_by_name(model_name)
-    instance = db.query(model).filter(model.id == record_id).first()
-    if not instance:
-        raise HTTPException(status_code=404, detail="Record not found")
-    return model_to_dict(instance)
+    # Discover Backend Plugins
+    registry.discover_plugins(settings.plugin_paths)
 
+    # Include Authentication Router
+    core_router.include_router(auth_router.router)
 
-@app.put("/v1/app/{model_name}/{record_id}")
-def update_record(
-    model_name: str,
-    record_id: int,
-    data: dict,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    check_permissions(current_user, f"{model_name.lower()}:write")
-    model = get_model_by_name(model_name)
-    instance = db.query(model).filter(model.id == record_id).first()
-    if not instance:
-        raise HTTPException(status_code=404, detail="Record not found")
+    # Register Backend Plugin Routers
+    for plugin_name, manifest in registry.plugins.items():
+        if manifest.router:
+            core_router.include_router(manifest.router)
+            print(f"Loaded plugin router for {plugin_name}")
 
-    changes = {}
-    for key, value in data.items():
-        if hasattr(instance, key):
-            old_value = getattr(instance, key)
-            if old_value != value:
-                changes[key] = {"old": old_value, "new": value}
-            setattr(instance, key, value)
+    # ─── Custom Routers (Overrides) ──────────────────────────────────────
+    # Load any custom router overrides specifically mentioned in blueprints
+    for bp in load_blueprints(settings):
+        override_path = bp.get("overrides", {}).get("backend_router")
+        if override_path and override_path.endswith(".py"):
+            # Convert 'routers/patient.py' -> 'routers.patient'
+            module_name = override_path.replace("/", ".").replace("\\", ".")[:-3]
+            try:
+                module = importlib.import_module(module_name)
+                if hasattr(module, "router"):
+                    app.include_router(module.router)
+                    print(f"Loaded custom router for {bp['name']} from {override_path}")
+            except ModuleNotFoundError as e:
+                print(
+                    f"Warning: Could not load router override {override_path} for {bp['name']}: {e}"
+                )
 
-    db.commit()
-    db.refresh(instance)
-    if changes:
-        log_audit(
-            db,
-            model_name,
-            instance.id,
-            "Updated",
-            changes=changes,
-            actor=current_user.full_name,
+    # ─── Module Registry ────────────────────────────────────────────────
+    @core_router.get("/modules")
+    def list_modules(current_user: models.User = Depends(get_current_user)):
+        """Return all modules grouped by their module category, including full UI metadata."""
+        grouped: dict = {}
+        for bp in load_blueprints(settings):
+            name = bp.get("name")
+            if not name:
+                continue
+
+            module_group = bp.get("module", "Other")
+            slug = (bp.get("slug") or name).lower()
+            permission_namespace = (bp.get("permission_namespace") or slug).lower()
+
+            try:
+                check_permissions(current_user, f"{permission_namespace}:read")
+                has_permission = True
+            except HTTPException:
+                has_permission = False
+
+            if not has_permission and "*:*" not in (
+                current_user.role.permissions or []
+            ):
+                continue
+
+            module_data = {
+                "name": name,
+                "slug": slug,
+                "ui": bp.get("ui", {}),
+                "views": bp.get("views", []),
+                "overrides": bp.get("overrides", {}),
+                "features": bp.get("features", {}),
+                "permission_namespace": permission_namespace,
+            }
+            grouped.setdefault(module_group, []).append(module_data)
+        return grouped
+
+    @core_router.get("/modules/{module_slug}")
+    def get_module_definition(
+        module_slug: str, current_user: models.User = Depends(get_current_user)
+    ):
+        for bp in load_blueprints(settings):
+            name = bp.get("name")
+            if not name:
+                continue
+
+            slug = (bp.get("slug") or name).lower()
+            if slug != module_slug.lower():
+                continue
+
+            permission_namespace = (bp.get("permission_namespace") or slug).lower()
+            check_permissions(current_user, f"{permission_namespace}:read")
+            return bp
+
+        raise HTTPException(status_code=404, detail=f"Module '{module_slug}' not found")
+
+    # ─── Records CRUD ────────────────────────────────────────────────────
+    @core_router.get("/app/{model_name}")
+    def list_records(
+        model_name: str,
+        request: Request,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        check_permissions(current_user, f"{model_name.lower()}:read")
+        model = get_model_by_name(model_name)
+        query = db.query(model)
+
+        for key, value in request.query_params.items():
+            if hasattr(model, key):
+                query = query.filter(getattr(model, key) == value)
+
+        return [model_to_dict(r) for r in query.all()]
+
+    @core_router.post("/app/{model_name}", status_code=201)
+    def create_record(
+        model_name: str,
+        data: dict,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        check_permissions(current_user, f"{model_name.lower()}:write")
+        model = get_model_by_name(model_name)
+
+        # PRE HOOK
+        registry.hooks.execute(model_name, "before_create", data, current_user, db)
+
+        instance = model(**data)
+        db.add(instance)
+        db.commit()
+        db.refresh(instance)
+
+        # POST HOOK
+        registry.hooks.execute(model_name, "after_create", instance, current_user, db)
+
+        if settings.enable_audit:
+            log_audit(
+                db,
+                model_name,
+                instance.id,
+                "Created",
+                changes=data,
+                actor=current_user.full_name,
+            )
+        return model_to_dict(instance)
+
+    @core_router.get("/app/{model_name}/{record_id}")
+    def get_record(
+        model_name: str,
+        record_id: int,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        check_permissions(current_user, f"{model_name.lower()}:read")
+        model = get_model_by_name(model_name)
+        instance = db.query(model).filter(model.id == record_id).first()
+        if not instance:
+            raise HTTPException(status_code=404, detail="Record not found")
+        return model_to_dict(instance)
+
+    @core_router.put("/app/{model_name}/{record_id}")
+    def update_record(
+        model_name: str,
+        record_id: int,
+        data: dict,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        check_permissions(current_user, f"{model_name.lower()}:write")
+        model = get_model_by_name(model_name)
+        instance = db.query(model).filter(model.id == record_id).first()
+        if not instance:
+            raise HTTPException(status_code=404, detail="Record not found")
+
+        # PRE HOOK
+        registry.hooks.execute(
+            model_name, "before_update", instance, data, current_user, db
         )
-    return model_to_dict(instance)
+
+        changes = {}
+        for key, value in data.items():
+            if hasattr(instance, key) and key != "id":
+                old_value = getattr(instance, key)
+                if old_value != value:
+                    changes[key] = {"old": old_value, "new": value}
+                setattr(instance, key, value)
+
+        db.commit()
+        db.refresh(instance)
+
+        # POST HOOK
+        registry.hooks.execute(
+            model_name, "after_update", instance, changes, current_user, db
+        )
+
+        if changes and settings.enable_audit:
+            log_audit(
+                db,
+                model_name,
+                instance.id,
+                "Updated",
+                changes=changes,
+                actor=current_user.full_name,
+            )
+        return model_to_dict(instance)
+
+    @core_router.delete("/app/{model_name}/{record_id}", status_code=204)
+    def delete_record(
+        model_name: str,
+        record_id: int,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        check_permissions(current_user, f"{model_name.lower()}:delete")
+        model = get_model_by_name(model_name)
+        instance = db.query(model).filter(model.id == record_id).first()
+        if not instance:
+            raise HTTPException(status_code=404, detail="Record not found")
+
+        old_data = model_to_dict(instance)
+
+        # PRE HOOK
+        registry.hooks.execute(model_name, "before_delete", instance, current_user, db)
+
+        db.delete(instance)
+        db.commit()
+
+        # POST HOOK
+        registry.hooks.execute(model_name, "after_delete", old_data, current_user, db)
+
+        if settings.enable_audit:
+            log_audit(
+                db,
+                model_name,
+                record_id,
+                "Deleted",
+                changes=old_data,
+                actor=current_user.full_name,
+            )
+        return None
+
+    app.include_router(core_router)
+
+    return app
 
 
-@app.delete("/v1/app/{model_name}/{record_id}", status_code=204)
-def delete_record(
-    model_name: str,
-    record_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    check_permissions(current_user, f"{model_name.lower()}:delete")
-    model = get_model_by_name(model_name)
-    instance = db.query(model).filter(model.id == record_id).first()
-    if not instance:
-        raise HTTPException(status_code=404, detail="Record not found")
-
-    old_data = model_to_dict(instance)
-    db.delete(instance)
-    db.commit()
-
-    log_audit(
-        db,
-        model_name,
-        record_id,
-        "Deleted",
-        changes=old_data,
-        actor=current_user.full_name,
-    )
-    return None
+# Maintain backward compatibility for `uvicorn main:app`
+settings = get_settings()
+app = create_app(settings)

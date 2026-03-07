@@ -10,7 +10,7 @@ export default function SchemaListView() {
     useEffect(() => {
         setLoading(true);
         setError(null);
-        fetch(`http://localhost:8010/v1/portal/${schemaName}`)
+        fetch(`${import.meta.env.VITE_API_URL || ''}/v1/portal/${schemaName}`)
             .then(async res => {
                 if (!res.ok) {
                     const errorData = await res.json().catch(() => ({}));

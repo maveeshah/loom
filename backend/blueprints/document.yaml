@@ -1,36 +1,39 @@
 name: Document
 module: Clinical
-description: "A patient document or scan"
-
+description: A patient document or scan
 ui:
   show_in_sidebar: true
-  icon: "file-text"
-  default_view: "dashboard"
-
+  icon: file-text
+  default_view: dashboard
 associations:
-  - type: belongs_to
-    target: Patient
-    foreign_key: patient_id
-
+- type: belongs_to
+  target: Patient
+  foreign_key: patient_id
 views:
-  - name: Dashboard
-    type: summary
-  - name: Preview
-    type: custom    # Notice this is a custom override
-
+- name: Dashboard
+  type: summary
+  id: summary
+- name: Preview
+  type: custom
+  id: preview
 overrides:
-  # The frontend will look for this file when the "Preview" tab is clicked
-  frontend_preview: "pages/custom/DocumentPreview.tsx"
-
+  frontend_preview: pages/custom/DocumentPreview.tsx
 fields:
-  - name: patient_id
-    type: Integer
-    required: true
-  - name: title
-    type: String
-    required: true
-  - name: file_url
-    type: String
-  - name: uploaded_at
-    type: DateTime
-    default: now()
+- name: patient_id
+  label: Patient ID
+  type: Integer
+  required: true
+- name: title
+  label: Title
+  type: String
+  required: true
+- name: file_url
+  label: File URL
+  type: String
+- name: uploaded_at
+  label: Uploaded At
+  type: DateTime
+  default: now()
+slug: document
+permission_namespace: document
+table_name: documents

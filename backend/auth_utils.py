@@ -9,12 +9,16 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db
 
+from settings import get_settings
+
+settings = get_settings()
+
 # Security Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-this-in-prod")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", settings.jwt_secret)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours for demo
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_prefix}/auth/login")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

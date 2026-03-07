@@ -1,24 +1,30 @@
 name: Comment
 module: System
-description: "Core generic commenting system"
-
+description: Core generic commenting system
 ui:
   show_in_sidebar: false
-  icon: "message-square"
-
+  icon: message-square
 fields:
-  - name: model_name
-    type: String
-    required: true
-  - name: record_id
-    type: Integer
-    required: true
-  - name: content
-    type: String
-    required: true
-  - name: author
-    type: String
-    default: "System User"
-  - name: created_at
-    type: DateTime
-    default: now()
+- name: model_name
+  label: Model Name
+  type: String
+  required: true
+- name: record_id
+  label: Record ID
+  type: Integer
+  required: true
+- name: content
+  label: Comment
+  type: String
+  required: true
+- name: author
+  label: Author
+  type: String
+  default: System User
+- name: created_at
+  label: Created At
+  type: DateTime
+  default: now()
+slug: comment
+permission_namespace: comment
+table_name: comments

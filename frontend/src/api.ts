@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8010';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const getToken = () => localStorage.getItem('loom_token');
 
@@ -40,6 +40,7 @@ export interface ModuleDefinition {
         default_view?: string;
     };
     views: {
+        id?: string;
         name: string;
         type: 'summary' | 'association' | 'comments' | 'history' | 'custom';
         target?: string;

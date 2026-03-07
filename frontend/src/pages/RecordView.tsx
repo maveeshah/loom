@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     Typography,
@@ -29,12 +29,10 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
+import { pluginRegistry } from '../framework/pluginRegistry';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-
-// Pre-scan all custom views for dynamic tab loading
-const customViews = import.meta.glob(['./custom/*.tsx', './custom/**/*.tsx']);
 
 function AssociationTab({ view, record, module }: { view: any, record: any, module: string }) {
     const [records, setRecords] = useState<any[]>([]);
@@ -196,7 +194,7 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
     useEffect(() => {
         setLoading(true);
         api.fetchRecords('auditlog', { model_name: module, record_id: record.id })
-            .then(data => setLogs(data.reverse()))
+            .then((data: any[]) => setLogs(data.reverse()))
             .finally(() => setLoading(false));
     }, [record, module]);
 
@@ -329,12 +327,12 @@ export default function RecordView() {
                 if (view.type === 'history') return <HistoryTab record={record} module={module!} />;
                 if (view.type === 'summary') return <div className="py-4"><Title level={4}>Summary</Title><Paragraph>Quick view of {displayName} status.</Paragraph></div>;
                 if (view.type === 'custom') {
-                    const overrideKey = `frontend_${view.name.toLowerCase().replace(/ /g, '_')}`;
-                    const overridePathRaw = (definition?.overrides as any)?.[overrideKey];
-                    const overridePath = overridePathRaw ? overridePathRaw.replace('pages/', './') : undefined;
+                    const fallbackPath = `frontend_${view.name.toLowerCase().replace(/ /g, '_')}`;
+                    const explicitId = view.id || fallbackPath;
 
-                    if (overridePath && customViews[overridePath]) {
-                        const CustomTabComponent = lazy(customViews[overridePath] as any);
+                    const CustomTabComponent = pluginRegistry.getView(module!, 'tab', explicitId);
+
+                    if (CustomTabComponent) {
                         return (
                             <div className="py-4">
                                 <Suspense fallback={<Skeleton active />}>
@@ -343,12 +341,13 @@ export default function RecordView() {
                             </div>
                         );
                     }
-                    return <Empty description="Custom component not found" />;
+                    return <Empty description="Custom plugin component not found in registry" />;
                 }
                 return null;
             })()
         }))
-    ];
+    ].filter(Boolean); // Clean any nulls that might happen
+
 
     return (
         <Layout>

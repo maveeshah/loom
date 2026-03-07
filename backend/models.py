@@ -102,3 +102,9 @@ class Projects(Base):
     budget = Column(Float)
     team_members = Column(JSON)
     tasks = Column(JSON)
+
+class Invoice(Base):
+    __tablename__ = 'invoices'
+    id = Column(Integer, primary_key=True, index=True)
+    amount = Column(Float)
+    status = Column(String, default='Draft')

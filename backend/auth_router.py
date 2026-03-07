@@ -12,7 +12,7 @@ from auth_utils import (
     get_current_user,
 )
 
-router = APIRouter(prefix="/v1/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.get("/me")

@@ -1,0 +1,21 @@
+name: Invoice
+module: Billing
+slug: invoice
+permission_namespace: invoice
+table_name: invoices
+ui:
+  show_in_sidebar: true
+  icon: "file-text"
+  default_view: summary
+fields:
+  - name: amount
+    label: Amount
+    type: Float
+  - name: status
+    label: Status
+    type: String
+    default: "Draft"
+views:
+  - id: summary
+    name: Summary
+    type: summary

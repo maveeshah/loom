@@ -1,26 +1,33 @@
 name: AuditLog
 module: System
-description: "Core generic history tracking system"
-
+description: Core generic history tracking system
 ui:
   show_in_sidebar: false
-  icon: "clock"
-
+  icon: clock
 fields:
-  - name: model_name
-    type: String
-    required: true
-  - name: record_id
-    type: Integer
-    required: true
-  - name: action
-    type: String
-    required: true
-  - name: changes
-    type: String
-  - name: actor
-    type: String
-    default: "System User"
-  - name: timestamp
-    type: DateTime
-    default: now()
+- name: model_name
+  label: Model Name
+  type: String
+  required: true
+- name: record_id
+  label: Record ID
+  type: Integer
+  required: true
+- name: action
+  label: Action
+  type: String
+  required: true
+- name: changes
+  label: Changes
+  type: String
+- name: actor
+  label: Actor
+  type: String
+  default: System User
+- name: timestamp
+  label: Timestamp
+  type: DateTime
+  default: now()
+slug: auditlog
+permission_namespace: auditlog
+table_name: auditlogs

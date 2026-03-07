@@ -1,19 +1,27 @@
 name: Note
 module: Clinical
 fields:
-  - name: title
-    type: String
-    required: true
-  - name: content
-    type: String
-    required: true
-  - name: is_done
-    type: Boolean
-    default: false
-  - name: created_at
-    type: DateTime
-    default: now()
-  - name: updated_at
-    type: DateTime
-    default: now()
-    onupdate: now()
+- name: title
+  label: Title
+  type: String
+  required: true
+- name: content
+  label: Content
+  type: String
+  required: true
+- name: is_done
+  label: Is Done
+  type: Boolean
+  default: false
+- name: created_at
+  label: Created At
+  type: DateTime
+  default: now()
+- name: updated_at
+  label: Updated At
+  type: DateTime
+  default: now()
+  onupdate: now()
+slug: note
+permission_namespace: note
+table_name: notes

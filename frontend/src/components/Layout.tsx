@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { config } from '../framework/config';
 
 const { Header, Sider, Content } = AntLayout;
 const { Text, Title } = Typography;
@@ -73,7 +74,7 @@ export default function Layout({ children }: LayoutProps) {
     };
 
     return (
-        <AntLayout style={{ minHeight: '100vh' }}>
+        <AntLayout style={{ minHeight: '100vh', flexDirection: config.layout.sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
             <Sider
                 trigger={null}
                 collapsible

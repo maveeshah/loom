@@ -12,7 +12,7 @@ export default function Workspace() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch('http://localhost:8010/v1/portal/schemas')
+        fetch(`${import.meta.env.VITE_API_URL || ''}/v1/portal/schemas`)
             .then(res => {
                 if (!res.ok) throw new Error('Failed to fetch schemas');
                 return res.json();

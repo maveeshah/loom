@@ -1,29 +1,45 @@
 name: Projects
 module: Admin
 fields:
-  - name: name
-    type: String
-    required: true
-  - name: description
-    type: String
-    required: true
-  - name: status
-    type: String
-    required: true
-  - name: start_date
-    type: Date
-    required: true
-  - name: end_date
-    type: Date
-    required: true
-  - name: budget
-    type: Float
-    required: true
-  - name: team_members
-    type: ManyToMany
-    required: true
-    target: Humans
-  - name: tasks
-    type: OneToMany
-    required: true
-    target: Tasks
+- name: name
+  label: Name
+  type: String
+  required: true
+- name: description
+  label: Description
+  type: String
+  required: true
+- name: status
+  label: Status
+  type: Select
+  options:
+  - Active
+  - Inactive
+  - Completed
+  - Cancelled
+  required: true
+- name: start_date
+  label: Start Date
+  type: Date
+  required: true
+- name: end_date
+  label: End Date
+  type: Date
+  required: true
+- name: budget
+  label: Budget
+  type: Float
+  required: true
+- name: team_members
+  label: Team Members
+  type: ManyToMany
+  required: true
+  target: Humans
+- name: tasks
+  label: Tasks
+  type: OneToMany
+  required: true
+  target: Tasks
+slug: projects
+permission_namespace: projects
+table_name: projects
