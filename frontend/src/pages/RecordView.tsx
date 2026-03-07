@@ -1,8 +1,37 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+    Typography,
+    Card,
+    Tabs,
+    Button,
+    Space,
+    Tag,
+    Descriptions,
+    Timeline,
+    Avatar,
+    Input,
+    message,
+    Skeleton,
+    Popconfirm,
+    Empty,
+    Breadcrumb
+} from 'antd';
+import {
+    EditOutlined,
+    DeleteOutlined,
+    ArrowLeftOutlined,
+    LinkOutlined,
+    UserOutlined,
+    HomeOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
+
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 // Pre-scan all custom views for dynamic tab loading
 const customViews = import.meta.glob(['./custom/*.tsx', './custom/**/*.tsx']);
@@ -19,37 +48,43 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
             .finally(() => setLoading(false));
     }, [view, record, module]);
 
-    if (!view.target) return <div>Invalid configuration: no target set.</div>;
+    if (!view.target) return <Empty description="Invalid configuration: no target set." />;
 
     return (
-        <div>
+        <div className="py-4">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-slate-800">{view.name}</h3>
-                <Link to={`/app/${view.target.toLowerCase()}/new?${module.toLowerCase()}_id=${record.id}`} className="btn-primary text-sm shrink-0">
-                    Add {view.target}
+                <Title level={4} style={{ margin: 0 }}>{view.name}</Title>
+                <Link to={`/app/${view.target.toLowerCase()}/new?${module.toLowerCase()}_id=${record.id}`}>
+                    <Button type="primary" icon={<LinkOutlined />}>
+                        Add {view.target}
+                    </Button>
                 </Link>
             </div>
             {loading ? (
-                <div className="p-8 text-center text-slate-400">Loading records...</div>
+                <Skeleton active />
             ) : records.length > 0 ? (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
-                                <th className="px-4 py-3 font-semibold text-slate-600">ID</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600">Details</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600 text-right">Actions</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">ID</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Details</th>
+                                <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-50">
                             {records.map(r => (
-                                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-3 text-slate-500 font-mono">#{r.id}</td>
-                                    <td className="px-4 py-3 text-slate-800 truncate max-w-[300px]">
-                                        {Object.entries(r).find(([k, v]) => typeof v === 'string' && !k.endsWith('_id') && k !== 'id')?.[1] as string || JSON.stringify(r).substring(0, 50)}
+                                <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-6 py-4"><Text code>#{r.id}</Text></td>
+                                    <td className="px-6 py-4">
+                                        <Text strong>
+                                            {Object.entries(r).find(([k, v]) => typeof v === 'string' && !k.endsWith('_id') && k !== 'id')?.[1] as string || 'Record Details'}
+                                        </Text>
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <Link to={`/app/${view.target.toLowerCase()}/${r.id}`} className="text-blue-600 font-medium hover:text-blue-800">View</Link>
+                                    <td className="px-6 py-4 text-right">
+                                        <Link to={`/app/${view.target.toLowerCase()}/${r.id}`}>
+                                            <Button type="link">View</Button>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))}
@@ -57,9 +92,10 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
                     </table>
                 </div>
             ) : (
-                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-lg">
-                    <p className="text-slate-400">No associated {view.target} records found.</p>
-                </div>
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={`No associated ${view.target.toLowerCase()} found.`}
+                />
             )}
         </div>
     );
@@ -69,6 +105,7 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
     const [comments, setComments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [newComment, setNewComment] = useState("");
+    const [posting, setPosting] = useState(false);
 
     const loadComments = () => {
         setLoading(true);
@@ -81,6 +118,7 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
 
     const handlePost = async () => {
         if (!newComment.trim()) return;
+        setPosting(true);
         try {
             await api.createRecord('comment', {
                 model_name: module,
@@ -90,44 +128,63 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
             });
             setNewComment("");
             loadComments();
-        } catch (e: any) { alert("Failed to post: " + e.message); }
+            message.success('Comment posted');
+        } catch (e: any) {
+            message.error("Failed to post: " + e.message);
+        } finally {
+            setPosting(false);
+        }
     };
 
     return (
-        <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Discussion</h3>
-            <div className="flex gap-4 mb-8">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                    <span className="text-blue-600 font-bold">U</span>
-                </div>
+        <div className="py-4">
+            <Title level={4} className="mb-8">Discussion</Title>
+            <div className="flex gap-4 mb-10">
+                <Avatar size="large" icon={<UserOutlined />} style={{ backgroundColor: '#3b82f6', flexShrink: 0 }} />
                 <div className="flex-1">
-                    <textarea
-                        className="input mb-3 bg-slate-50 border-slate-200 min-h-[100px] w-full p-3 rounded border"
-                        placeholder="Add a comment..."
+                    <TextArea
+                        placeholder="Add a comment or internal note..."
+                        autoSize={{ minRows: 3, maxRows: 6 }}
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
+                        className="mb-3 rounded-xl border-slate-200"
                     />
                     <div className="flex justify-end">
-                        <button onClick={handlePost} className="btn-primary">Post Comment</button>
+                        <Button
+                            type="primary"
+                            onClick={handlePost}
+                            loading={posting}
+                            disabled={!newComment.trim()}
+                        >
+                            Post Comment
+                        </Button>
                     </div>
                 </div>
             </div>
-            <div className="space-y-6">
-                {loading ? <div className="text-slate-400">Loading...</div> : comments.map(c => (
-                    <div key={c.id} className="flex gap-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                            <span className="text-slate-600 font-bold">{c.author.charAt(0)}</span>
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-slate-800">{c.author}</span>
-                                <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleString()}</span>
+
+            {loading ? <Skeleton active avatar /> : (
+                <div className="space-y-8">
+                    {comments.map(c => (
+                        <div key={c.id} className="flex gap-4">
+                            <Avatar size="large" style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}>
+                                {c.author.charAt(0)}
+                            </Avatar>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Text strong>{c.author}</Text>
+                                    <Text type="secondary" className="text-[10px]">
+                                        {new Date(c.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </Text>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
+                                    <Paragraph className="text-slate-600 m-0 whitespace-pre-wrap">{c.content}</Paragraph>
+                                </div>
                             </div>
-                            <p className="text-slate-600 text-sm whitespace-pre-wrap">{c.content}</p>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                    {comments.length === 0 && <Empty description="No comments yet." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                </div>
+            )}
         </div>
     );
 }
@@ -144,25 +201,42 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
     }, [record, module]);
 
     return (
-        <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Audit Trail</h3>
-            <div className="relative pl-4 border-l-2 border-slate-100 space-y-6">
-                {loading ? <div className="text-slate-400">Loading logs...</div> : logs.length === 0 ? <div className="text-slate-400">No history found.</div> : logs.map(log => (
-                    <div key={log.id} className="relative shadow-sm py-2 px-3 bg-slate-50 border border-slate-100 rounded-lg">
-                        <div className="absolute -left-[23px] top-4 w-3 h-3 bg-slate-300 rounded-full ring-4 ring-white" />
-                        <div className="flex justify-between items-start mb-2">
-                            <p className="text-sm font-bold text-slate-800 capitalize">{log.action}</p>
-                            <p className="text-xs text-slate-400">{new Date(log.timestamp).toLocaleString()}</p>
-                        </div>
-                        <p className="text-xs text-slate-500 mb-2">by {log.actor}</p>
-                        {log.changes && (
-                            <pre className="text-[10px] bg-slate-800 text-slate-300 p-2 rounded overflow-x-auto">
-                                {JSON.stringify(JSON.parse(log.changes), null, 2)}
-                            </pre>
-                        )}
-                    </div>
-                ))}
-            </div>
+        <div className="py-4">
+            <Title level={4} className="mb-8">Audit Trail</Title>
+            {loading ? <Skeleton active /> : (
+                <Timeline
+                    items={logs.map(log => ({
+                        color: log.action === 'create' ? 'green' : log.action === 'delete' ? 'red' : 'blue',
+                        children: (
+                            <div className="pb-4">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Text strong className="capitalize">{log.action}</Text>
+                                        <Text type="secondary" className="text-xs">by {log.actor}</Text>
+                                    </div>
+                                    <Text type="secondary" className="text-[10px]">
+                                        {new Date(log.timestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </Text>
+                                </div>
+                                {log.changes && (
+                                    <div className="bg-slate-900 rounded-lg p-3 mt-2 overflow-x-auto shadow-inner">
+                                        <pre className="text-[10px] text-emerald-400 m-0 leading-relaxed font-mono">
+                                            {(() => {
+                                                try {
+                                                    return JSON.stringify(JSON.parse(log.changes), null, 2);
+                                                } catch (e) {
+                                                    return log.changes;
+                                                }
+                                            })()}
+                                        </pre>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }))}
+                />
+            )}
+            {!loading && logs.length === 0 && <Empty description="No history found." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
         </div>
     );
 }
@@ -173,11 +247,8 @@ export default function RecordView() {
     const [record, setRecord] = useState<any>(null);
     const [definition, setDefinition] = useState<ModuleDefinition | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
-
-    // Tab state
-    const [activeTab, setActiveTab] = useState<string>('Dashboard');
+    const [activeTab, setActiveTab] = useState<string>('');
 
     useEffect(() => {
         if (!module || !id) return;
@@ -186,186 +257,162 @@ export default function RecordView() {
             .then(([rec, def]) => {
                 setRecord(rec);
                 setDefinition(def);
-                // Set default tab based on definition
+
+                // Initialize active tab
                 if (def.ui?.default_view) {
                     const view = def.views?.find((v: any) => v.type === def.ui?.default_view) || def.views?.[0];
                     if (view) setActiveTab(view.name);
-                } else if (def.views?.length > 0) {
-                    setActiveTab(def.views[0].name);
+                    else setActiveTab('Overview');
+                } else {
+                    setActiveTab('Overview');
                 }
             })
-            .catch(err => setError(err.message))
+            .catch(err => {
+                message.error(err.message);
+                navigate(`/app/${module}`);
+            })
             .finally(() => setLoading(false));
-    }, [module, id]);
+    }, [module, id, navigate]);
 
     const handleDelete = async () => {
-        if (!module || !id || !window.confirm('Delete this record? This cannot be undone.')) return;
+        if (!module || !id) return;
         setDeleting(true);
         try {
             await api.deleteRecord(module, Number(id));
+            message.success('Record deleted successfully');
             navigate(`/app/${module}`);
         } catch (err: any) {
-            alert(err.message);
+            message.error(err.message);
             setDeleting(false);
         }
     };
+
+    if (loading) return <Layout><div className="p-8"><Skeleton active /></div></Layout>;
+    if (!record || !definition) return <Layout><Empty className="py-20" description="Record not found" /></Layout>;
 
     const displayName = definition?.name ?? module;
     const fields: any[] = (definition as any)?.fields ?? [];
     const views = definition?.views ?? [];
 
-    if (loading) return <Layout><div className="p-8 text-slate-400">Loading...</div></Layout>;
-
-    if (error || !record) {
-        return (
-            <Layout>
-                <div className="p-8">
-                    <div className="card p-6 border-red-200 bg-red-50">
-                        <p className="text-red-600 font-medium">{error ?? 'Record not found'}</p>
-                        <Link to={`/app/${module}`} className="btn-ghost mt-3">← Back</Link>
-                    </div>
+    const tabItems = [
+        {
+            key: 'Overview',
+            label: 'Overview',
+            children: (
+                <div className="py-4">
+                    <Descriptions
+                        bordered
+                        column={{ xxl: 3, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
+                        className="modern-descriptions"
+                    >
+                        {fields.map(field => (
+                            <Descriptions.Item key={field.name} label={field.name.replace(/_/g, ' ')}>
+                                {record[field.name] === null || record[field.name] === undefined ? (
+                                    <Text type="secondary" italic>Not set</Text>
+                                ) : field.type === 'Boolean' ? (
+                                    <Tag color={record[field.name] ? 'blue' : 'default'}>{record[field.name] ? 'Yes' : 'No'}</Tag>
+                                ) : (
+                                    <Text strong>{String(record[field.name])}</Text>
+                                )}
+                            </Descriptions.Item>
+                        ))}
+                    </Descriptions>
                 </div>
-            </Layout>
-        );
-    }
+            )
+        },
+        ...views.map(view => ({
+            key: view.name,
+            label: view.name,
+            children: (() => {
+                if (view.type === 'association') return <AssociationTab view={view} record={record} module={module!} />;
+                if (view.type === 'comments') return <CommentsTab record={record} module={module!} />;
+                if (view.type === 'history') return <HistoryTab record={record} module={module!} />;
+                if (view.type === 'summary') return <div className="py-4"><Title level={4}>Summary</Title><Paragraph>Quick view of {displayName} status.</Paragraph></div>;
+                if (view.type === 'custom') {
+                    const overrideKey = `frontend_${view.name.toLowerCase().replace(/ /g, '_')}`;
+                    const overridePathRaw = (definition?.overrides as any)?.[overrideKey];
+                    const overridePath = overridePathRaw ? overridePathRaw.replace('pages/', './') : undefined;
 
-    const currentView = views.find(v => v.name === activeTab);
+                    if (overridePath && customViews[overridePath]) {
+                        const CustomTabComponent = lazy(customViews[overridePath] as any);
+                        return (
+                            <div className="py-4">
+                                <Suspense fallback={<Skeleton active />}>
+                                    <CustomTabComponent />
+                                </Suspense>
+                            </div>
+                        );
+                    }
+                    return <Empty description="Custom component not found" />;
+                }
+                return null;
+            })()
+        }))
+    ];
 
     return (
         <Layout>
-            <div className="p-8 max-w-5xl mx-auto">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <Link to={`/app/${module}`} className="text-slate-400 hover:text-slate-600 transition-colors">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900">{displayName} #{record.id}</h1>
-                            <p className="text-sm text-slate-400 mt-0.5">Record details</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link to={`/app/${module}/${id}/edit`} className="btn-ghost">Edit</Link>
-                        <button onClick={handleDelete} disabled={deleting} className="btn-danger">
-                            {deleting ? 'Deleting...' : 'Delete'}
-                        </button>
-                    </div>
-                </div>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Header Section */}
+                <div className="mb-8">
+                    <Breadcrumb
+                        style={{ marginBottom: 16 }}
+                        items={[
+                            { title: <Link to="/"><HomeOutlined /></Link> },
+                            { title: <Link to={`/app/${module}`}>{displayName}</Link> },
+                            { title: `#${record.id}` },
+                        ]}
+                    />
 
-                {/* Main Content Area: Split into Top (Core Details) and Bottom (Tabs) */}
-
-                {/* 1. Core Details Card */}
-                <div className="card overflow-hidden mb-8">
-                    <dl className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 border-b border-slate-100">
-                        {fields.slice(0, 4).map((field: any) => (
-                            <div key={field.name} className="px-5 py-3.5">
-                                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                                    {field.name.replace(/_/g, ' ')}
-                                </dt>
-                                <dd className="text-sm text-slate-800 font-semibold">
-                                    {record[field.name] === null || record[field.name] === undefined
-                                        ? <span className="text-slate-300 font-normal">Not set</span>
-                                        : field.type === 'Boolean'
-                                            ? <span className={`badge ${record[field.name] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{record[field.name] ? 'Yes' : 'No'}</span>
-                                            : String(record[field.name])}
-                                </dd>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <Space align="center" size={16}>
+                            <motion.div whileHover={{ x: -4 }}>
+                                <Link to={`/app/${module}`}>
+                                    <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" className="shadow-sm" />
+                                </Link>
+                            </motion.div>
+                            <div>
+                                <Title level={2} style={{ margin: 0, fontWeight: 800 }}>
+                                    {displayName} <span className="text-slate-300 ml-2">#{record.id}</span>
+                                </Title>
+                                <Space split={<Text type="secondary">·</Text>} className="mt-1">
+                                    <Tag color="processing" bordered={false} className="rounded-full px-3">{module}</Tag>
+                                    <Text type="secondary" className="text-xs">Modified {new Date().toLocaleDateString()}</Text>
+                                </Space>
                             </div>
-                        ))}
-                    </dl>
-                    {/* Render the rest of the fields normally if there are many */}
-                    {fields.length > 4 && (
-                        <dl className="divide-y divide-slate-100">
-                            {fields.slice(4).map((field: any) => (
-                                <div key={field.name} className="flex px-5 py-3.5">
-                                    <dt className="w-48 flex-shrink-0 text-sm font-medium text-slate-500 capitalize">
-                                        {field.name.replace(/_/g, ' ')}
-                                    </dt>
-                                    <dd className="flex-1 text-sm text-slate-800 font-medium">
-                                        {record[field.name] === null || record[field.name] === undefined
-                                            ? <span className="text-slate-300">Not set</span>
-                                            : field.type === 'Boolean'
-                                                ? <span className={`badge ${record[field.name] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{record[field.name] ? 'Yes' : 'No'}</span>
-                                                : String(record[field.name])}
-                                    </dd>
-                                </div>
-                            ))}
-                        </dl>
-                    )}
+                        </Space>
+
+                        <Space>
+                            <Link to={`/app/${module}/${record.id}/edit`}>
+                                <Button size="large" icon={<EditOutlined />} className="rounded-xl font-semibold">
+                                    Edit Record
+                                </Button>
+                            </Link>
+                            <Popconfirm
+                                title="Delete this record?"
+                                description="This action cannot be undone."
+                                onConfirm={handleDelete}
+                                okText="Delete"
+                                cancelText="Cancel"
+                                okButtonProps={{ danger: true, loading: deleting }}
+                            >
+                                <Button size="large" danger icon={<DeleteOutlined />} className="rounded-xl shadow-sm shadow-rose-100" />
+                            </Popconfirm>
+                        </Space>
+                    </div>
                 </div>
 
-                {/* 2. Dynamic Tabs */}
-                {views.length > 0 && (
-                    <div className="mt-8">
-                        <div className="flex items-center gap-6 border-b border-slate-200 mb-6 px-1">
-                            {views.map((view) => (
-                                <button
-                                    key={view.name}
-                                    onClick={() => setActiveTab(view.name)}
-                                    className={`pb-3 text-sm font-medium border-b-2 transition-colors duration-200 ${activeTab === view.name
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                        }`}
-                                >
-                                    {view.name}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* 3. Tab Content Area */}
-                        <div className="bg-white rounded-xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-slate-200 min-h-[300px] p-6">
-                            {!currentView && (
-                                <p className="text-slate-500 text-center py-12">Select a tab to view content.</p>
-                            )}
-
-                            {currentView?.type === 'summary' && (
-                                <div>
-                                    <h3 className="text-lg font-bold text-slate-800 mb-4">{currentView.name}</h3>
-                                    <p className="text-slate-500">Summary view of {displayName} record #{record.id}.</p>
-                                    {/* Additional generic summary widgets could go here */}
-                                </div>
-                            )}
-
-                            {currentView?.type === 'association' && (
-                                <AssociationTab view={currentView} record={record} module={module!} />
-                            )}
-
-                            {currentView?.type === 'comments' && (
-                                <CommentsTab record={record} module={module!} />
-                            )}
-
-                            {currentView?.type === 'history' && (
-                                <HistoryTab record={record} module={module!} />
-                            )}
-
-                            {currentView?.type === 'custom' && (() => {
-                                const overrideKey = `frontend_${currentView.name.toLowerCase().replace(/ /g, '_')}`;
-                                const overridePathRaw = (definition?.overrides as any)?.[overrideKey];
-                                const overridePath = overridePathRaw ? overridePathRaw.replace('pages/', './') : undefined;
-
-                                if (overridePath && customViews[overridePath]) {
-                                    const CustomTabComponent = lazy(customViews[overridePath] as any);
-                                    return (
-                                        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading custom tab...</div>}>
-                                            <CustomTabComponent />
-                                        </Suspense>
-                                    );
-                                }
-
-                                return (
-                                    <div className="p-8 text-center bg-indigo-50 border border-indigo-100 rounded-lg">
-                                        <p className="text-indigo-600 font-medium">Custom Component Slot</p>
-                                        <p className="text-sm text-indigo-400 mt-1">
-                                            Dynamically imports `<span className="font-mono">{overridePathRaw || definition?.overrides?.frontend_analytics || 'Unknown override path'}</span>`
-                                        </p>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
-                )}
+                {/* Main Content */}
+                <Card className="premium-card" bodyStyle={{ padding: '0 24px' }}>
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={setActiveTab}
+                        items={tabItems}
+                        className="modern-tabs"
+                        size="large"
+                        tabBarGutter={32}
+                    />
+                </Card>
             </div>
         </Layout>
     );

@@ -23,12 +23,22 @@ def generate_all_models():
 
         # Build the SQLAlchemy Class
         model_code = f"class {name}(Base):\n"
-        model_code += f"    __tablename__ = '{name.lower()}s'\n"
+        model_code += f"    __tablename__ = '{name.lower() if name.lower().endswith('s') else name.lower() + 's'}'\n"
         model_code += "    id = Column(Integer, primary_key=True, index=True)\n"
+
+        # Collect foreign keys to avoid duplicate column definitions
+        fks = [
+            assoc.get("foreign_key")
+            for assoc in associations
+            if assoc.get("type") == "belongs_to"
+        ]
 
         # Generate fields
         for field in fields:
             f_name = field["name"]
+            if f_name in fks:
+                continue
+
             f_type = field["type"]
 
             # Auto-map relationships to JSON arrays for prototyping
@@ -61,7 +71,12 @@ def generate_all_models():
 
             if assoc_type == "belongs_to":
                 # If this model belongs to another, it needs a foreign key pointing to the target
-                model_code += f"    {fk_name} = Column(Integer, ForeignKey('{target.lower()}s.id'))\n"
+                target_table = (
+                    target.lower()
+                    if target.lower().endswith("s")
+                    else target.lower() + "s"
+                )
+                model_code += f"    {fk_name} = Column(Integer, ForeignKey('{target_table}.id'))\n"
                 # And a relationship
                 # e.g., patient = relationship("Patient", back_populates="encounters")
                 rel_name = target.lower()

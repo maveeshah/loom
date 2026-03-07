@@ -30,8 +30,6 @@ views:
 
 # Define where custom code should be loaded from
 overrides:
-  backend_router: "routers/patient.py"
-  frontend_view: "pages/custom/PatientView.tsx"
   frontend_analytics: "pages/custom/PatientAnalytics.tsx"
 
 fields:

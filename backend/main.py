@@ -9,25 +9,36 @@ import inspect
 import importlib
 import json
 from datetime import datetime
+from auth_utils import get_current_user, check_permissions
+import auth_router
 
 app = FastAPI(title="Viemed API")
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3009",
+        "http://localhost:3010",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include Authentication Router
+app.include_router(auth_router.router)
+
 
 def get_model_by_name(name: str):
-    """Look up a SQLAlchemy model class by name."""
-    model = getattr(models, name.capitalize(), None)
-    if not model or not inspect.isclass(model):
-        raise HTTPException(status_code=404, detail=f"Module '{name}' not found")
-    return model
+    """Look up a SQLAlchemy model class by name case-insensitively."""
+    for attr_name in dir(models):
+        if attr_name.lower() == name.lower():
+            model = getattr(models, attr_name)
+            if inspect.isclass(model):
+                return model
+    raise HTTPException(status_code=404, detail=f"Module '{name}' not found")
 
 
 def model_to_dict(instance) -> dict:
@@ -67,7 +78,7 @@ for bp in load_blueprints():
 
 
 @app.get("/v1/modules")
-def list_modules():
+def list_modules(current_user: models.User = Depends(get_current_user)):
     """Return all modules grouped by their module category, including full UI metadata."""
     grouped: dict = {}
     for bp in load_blueprints():
@@ -75,7 +86,16 @@ def list_modules():
         module_group = bp.get("module", "Other")
         slug = name.lower()
 
-        # Include ui, views, and frontend overrides to drive the frontend UI
+        # Simple check for read permission on the module
+        try:
+            check_permissions(current_user, f"{slug}:read")
+            has_permission = True
+        except HTTPException:
+            has_permission = False
+
+        if not has_permission and "*:*" not in (current_user.role.permissions or []):
+            continue
+
         module_data = {
             "name": name,
             "slug": slug,
@@ -88,8 +108,11 @@ def list_modules():
 
 
 @app.get("/v1/modules/{model_name}")
-def get_module_definition(model_name: str):
-    """Return the full field definition for a model (for dynamic form rendering)."""
+def get_module_definition(
+    model_name: str, current_user: models.User = Depends(get_current_user)
+):
+    """Return the full field definition for a model."""
+    check_permissions(current_user, f"{model_name.lower()}:read")
     for bp in load_blueprints():
         if bp["name"].lower() == model_name.lower():
             return bp
@@ -108,7 +131,6 @@ def log_audit(
     actor: str = "System User",
 ):
     """Helper to save an audit log entry."""
-    # Prevent infinite loop if we are creating an audit log itself
     if model_name.lower() in ("auditlog", "comment"):
         return
     try:
@@ -127,11 +149,16 @@ def log_audit(
 
 
 @app.get("/v1/app/{model_name}")
-def list_records(model_name: str, request: Request, db: Session = Depends(get_db)):
+def list_records(
+    model_name: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    check_permissions(current_user, f"{model_name.lower()}:read")
     model = get_model_by_name(model_name)
     query = db.query(model)
 
-    # Generic filtering based on query params
     for key, value in request.query_params.items():
         if hasattr(model, key):
             query = query.filter(getattr(model, key) == value)
@@ -140,19 +167,38 @@ def list_records(model_name: str, request: Request, db: Session = Depends(get_db
 
 
 @app.post("/v1/app/{model_name}", status_code=201)
-def create_record(model_name: str, data: dict, db: Session = Depends(get_db)):
+def create_record(
+    model_name: str,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    check_permissions(current_user, f"{model_name.lower()}:write")
     model = get_model_by_name(model_name)
     instance = model(**data)
     db.add(instance)
     db.commit()
     db.refresh(instance)
 
-    log_audit(db, model_name, instance.id, "Created", changes=data)
+    log_audit(
+        db,
+        model_name,
+        instance.id,
+        "Created",
+        changes=data,
+        actor=current_user.full_name,
+    )
     return model_to_dict(instance)
 
 
 @app.get("/v1/app/{model_name}/{record_id}")
-def get_record(model_name: str, record_id: int, db: Session = Depends(get_db)):
+def get_record(
+    model_name: str,
+    record_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    check_permissions(current_user, f"{model_name.lower()}:read")
     model = get_model_by_name(model_name)
     instance = db.query(model).filter(model.id == record_id).first()
     if not instance:
@@ -162,8 +208,13 @@ def get_record(model_name: str, record_id: int, db: Session = Depends(get_db)):
 
 @app.put("/v1/app/{model_name}/{record_id}")
 def update_record(
-    model_name: str, record_id: int, data: dict, db: Session = Depends(get_db)
+    model_name: str,
+    record_id: int,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
+    check_permissions(current_user, f"{model_name.lower()}:write")
     model = get_model_by_name(model_name)
     instance = db.query(model).filter(model.id == record_id).first()
     if not instance:
@@ -180,12 +231,25 @@ def update_record(
     db.commit()
     db.refresh(instance)
     if changes:
-        log_audit(db, model_name, instance.id, "Updated", changes=changes)
+        log_audit(
+            db,
+            model_name,
+            instance.id,
+            "Updated",
+            changes=changes,
+            actor=current_user.full_name,
+        )
     return model_to_dict(instance)
 
 
 @app.delete("/v1/app/{model_name}/{record_id}", status_code=204)
-def delete_record(model_name: str, record_id: int, db: Session = Depends(get_db)):
+def delete_record(
+    model_name: str,
+    record_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    check_permissions(current_user, f"{model_name.lower()}:delete")
     model = get_model_by_name(model_name)
     instance = db.query(model).filter(model.id == record_id).first()
     if not instance:
@@ -195,5 +259,12 @@ def delete_record(model_name: str, record_id: int, db: Session = Depends(get_db)
     db.delete(instance)
     db.commit()
 
-    log_audit(db, model_name, record_id, "Deleted", changes=old_data)
+    log_audit(
+        db,
+        model_name,
+        record_id,
+        "Deleted",
+        changes=old_data,
+        actor=current_user.full_name,
+    )
     return None

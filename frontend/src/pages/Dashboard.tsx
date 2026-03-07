@@ -1,107 +1,178 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Typography, Row, Col, Card, Skeleton, Statistic, Empty } from 'antd';
+import {
+    RightOutlined,
+    AppstoreOutlined,
+    DatabaseOutlined,
+    DeploymentUnitOutlined,
+    GlobalOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
+import { useAuth } from '../context/AuthContext';
+
+const { Title, Text } = Typography;
 
 export default function Dashboard() {
     const [modules, setModules] = useState<Record<string, ModuleDefinition[]>>({});
+    const [loading, setLoading] = useState(true);
+    const { hasPermission } = useAuth();
 
     useEffect(() => {
-        api.fetchModules().then(setModules);
+        api.fetchModules().then(data => {
+            setModules(data);
+            setLoading(false);
+        }).catch(() => setLoading(false));
     }, []);
 
-    const allModules = Object.entries(modules).flatMap(([group, items]) =>
-        items.filter((item) => item.ui?.show_in_sidebar !== false)
-            .map((item) => ({ ...item, group }))
-    );
-
-    const groupColors: Record<string, string> = {
-        Clinical: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-        Admin: 'bg-violet-50 border-violet-200 text-violet-700',
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.05
+            }
+        }
     };
 
-    const groupIcons: Record<string, string> = {
-        Clinical: '🏥',
-        Admin: '⚙️',
+    const itemAnim = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
     };
 
-    const fallbackColors = [
-        'bg-blue-50 border-blue-200 text-blue-700',
-        'bg-amber-50 border-amber-200 text-amber-700',
-        'bg-pink-50 border-pink-200 text-pink-700',
-        'bg-cyan-50 border-cyan-200 text-cyan-700',
-        'bg-rose-50 border-rose-200 text-rose-700',
-        'bg-indigo-50 border-indigo-200 text-indigo-700',
-    ];
-
-    const fallbackIcons = ['📦', '📊', '🧩', '🚀', '⚡', '🌟', '🎯', '🔥', '💎', '💡'];
-
-    const getGroupColor = (group: string) => {
-        if (groupColors[group]) return groupColors[group];
-        let hash = 0;
-        for (let i = 0; i < group.length; i++) hash = group.charCodeAt(i) + ((hash << 5) - hash);
-        return fallbackColors[Math.abs(hash) % fallbackColors.length];
+    const groupIcons: Record<string, React.ReactNode> = {
+        Clinical: <AppstoreOutlined />,
+        Admin: <DeploymentUnitOutlined />,
     };
 
-    const getGroupIcon = (group: string) => {
-        if (groupIcons[group]) return groupIcons[group];
-        let hash = 0;
-        for (let i = 0; i < group.length; i++) hash = group.charCodeAt(i) + ((hash << 5) - hash);
-        return fallbackIcons[Math.abs(hash) % fallbackIcons.length];
-    };
+    const allModuleGroups = Object.entries(modules);
+    const visibleModuleCount = allModuleGroups.reduce((acc, [_, items]) => {
+        return acc + items.filter(item => {
+            if (item.ui?.show_in_sidebar === false) return false;
+            return hasPermission(`${item.slug}:read`);
+        }).length;
+    }, 0);
 
     return (
         <Layout>
-            <div className="p-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-                    <p className="text-slate-500 mt-1">Select a module to view and manage records.</p>
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-12">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <Title level={2} style={{ fontWeight: 800, marginBottom: 8 }}>
+                            Module Dashboard
+                        </Title>
+                        <Text type="secondary" style={{ fontSize: 16 }}>
+                            A unified toolkit for managing your platform's data domains and modules.
+                        </Text>
+                    </motion.div>
+
+                    <Row gutter={[24, 24]} className="mt-8">
+                        <Col xs={24} sm={12} md={8}>
+                            <Card className="glass-card" bordered={false}>
+                                <Statistic
+                                    title="Accessible Modules"
+                                    value={visibleModuleCount}
+                                    prefix={<AppstoreOutlined className="text-blue-500 mr-2" />}
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} sm={12} md={8}>
+                            <Card className="glass-card" bordered={false}>
+                                <Statistic
+                                    title="Environment"
+                                    value="Production"
+                                    prefix={<GlobalOutlined className="text-emerald-500 mr-2" />}
+                                />
+                            </Card>
+                        </Col>
+                    </Row>
                 </div>
 
-                {/* Module Groups */}
-                {Object.entries(modules).map(([group, items]) => {
-                    const visibleItems = items.filter(item => item.ui?.show_in_sidebar !== false);
-                    if (visibleItems.length === 0) return null;
+                {loading ? (
+                    <Row gutter={[24, 24]}>
+                        {[1, 2, 3].map(i => (
+                            <Col xs={24} key={i}>
+                                <Skeleton active round />
+                            </Col>
+                        ))}
+                    </Row>
+                ) : (
+                    <motion.div
+                        variants={container}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        {allModuleGroups.map(([group, items]) => {
+                            const visibleItems = items.filter(item => {
+                                if (item.ui?.show_in_sidebar === false) return false;
+                                return hasPermission(`${item.slug}:read`);
+                            });
+                            if (visibleItems.length === 0) return null;
 
-                    return (
-                        <div key={group} className="mb-8">
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="text-lg">{getGroupIcon(group)}</span>
-                                <h2 className="text-base font-semibold text-slate-700">{group}</h2>
-                                <span className="badge bg-slate-100 text-slate-500">{visibleItems.length}</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {visibleItems.map(item => (
-                                    <Link
-                                        key={item.slug}
-                                        to={`/app/${item.slug}`}
-                                        className="card p-5 hover:shadow-md hover:border-blue-300 transition-all duration-200 group cursor-pointer"
-                                    >
-                                        <div className="flex items-start justify-between mb-3">
-                                            <span className={`badge border ${getGroupColor(group)}`}>
-                                                {group}
-                                            </span>
-                                            <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                            </svg>
+                            return (
+                                <div key={group} className="mb-12">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-900 shadow-lg shadow-slate-200 flex items-center justify-center text-white text-xl">
+                                            {groupIcons[group] || <DatabaseOutlined />}
                                         </div>
-                                        <h3 className="text-base font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-                                            {item.name}
-                                        </h3>
-                                        <p className="text-xs text-slate-400 mt-1">View and manage {item.name.toLowerCase()} records</p>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
+                                        <div>
+                                            <Title level={4} style={{ margin: 0, fontWeight: 700 }}>{group}</Title>
+                                            <Text type="secondary" className="text-xs uppercase tracking-widest font-bold opacity-50">
+                                                {visibleItems.length} Available
+                                            </Text>
+                                        </div>
+                                    </div>
 
-                {allModules.length === 0 && (
-                    <div className="card p-12 text-center">
-                        <p className="text-slate-400">No modules found. Add a YAML blueprint to get started.</p>
-                    </div>
+                                    <Row gutter={[24, 24]}>
+                                        {visibleItems.map(item => (
+                                            <Col xs={24} sm={12} lg={8} xl={6} key={item.slug}>
+                                                <motion.div variants={itemAnim} whileHover={{ y: -5 }} transition={{ type: 'spring', stiffness: 300 }}>
+                                                    <Link to={`/app/${item.slug}`}>
+                                                        <Card
+                                                            hoverable
+                                                            className="premium-card h-full"
+                                                            bodyStyle={{ padding: '28px' }}
+                                                        >
+                                                            <div className="flex justify-between items-start mb-6">
+                                                                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-black">
+                                                                    {item.name.charAt(0)}
+                                                                </div>
+                                                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                    <RightOutlined style={{ fontSize: 12 }} />
+                                                                </div>
+                                                            </div>
+                                                            <Title level={5} style={{ margin: '0 0 8px 0', fontWeight: 700 }}>
+                                                                {item.name}
+                                                            </Title>
+                                                            <Text type="secondary" className="text-sm line-clamp-2 leading-relaxed">
+                                                                Comprehensive management of {item.name.toLowerCase()} assets and records.
+                                                            </Text>
+                                                        </Card>
+                                                    </Link>
+                                                </motion.div>
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                </div>
+                            );
+                        })}
+
+                        {visibleModuleCount === 0 && (
+                            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
+                                <Empty
+                                    description="No modules are currently accessible with your permissions."
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                />
+                            </div>
+                        )}
+                    </motion.div>
                 )}
             </div>
         </Layout>

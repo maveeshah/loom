@@ -1,34 +1,43 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import {
+    Form,
+    Input,
+    Button,
+    DatePicker,
+    InputNumber,
+    Card,
+    Typography,
+    message,
+    Breadcrumb,
+    Switch,
+    Skeleton
+} from 'antd';
+import {
+    SaveOutlined,
+    ArrowLeftOutlined,
+    HomeOutlined
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import Layout from '../components/Layout';
 import { api } from '../api';
 
-const FIELD_TYPE_MAP: Record<string, string> = {
-    String: 'text',
-    Integer: 'number',
-    Float: 'number',
-    Boolean: 'checkbox',
-    DateTime: 'datetime-local',
-    Date: 'date',
-    JSON: 'text',
-    ManyToMany: 'text',
-    OneToMany: 'text',
-};
+const { Title, Text } = Typography;
 
 export default function RecordForm() {
     const { module, id } = useParams<{ module: string; id?: string }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const [form] = Form.useForm();
     const isEditing = Boolean(id);
 
     const [definition, setDefinition] = useState<any>(null);
-    const [formData, setFormData] = useState<Record<string, any>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!module) return;
+        setLoading(true);
         const loads: Promise<any>[] = [api.fetchModuleDefinition(module)];
         if (isEditing && id) loads.push(api.fetchRecord(module, Number(id)));
 
@@ -36,11 +45,16 @@ export default function RecordForm() {
             .then(([def, existing]) => {
                 setDefinition(def);
                 if (existing) {
-                    // Pre-fill form without id
                     const { id: _, ...rest } = existing;
-                    setFormData(rest);
+                    // Format dates for Ant Design DatePicker
+                    const formattedData = { ...rest };
+                    def.fields?.forEach((f: any) => {
+                        if (['Date', 'DateTime'].includes(f.type) && rest[f.name]) {
+                            formattedData[f.name] = dayjs(rest[f.name]);
+                        }
+                    });
+                    form.setFieldsValue(formattedData);
                 } else {
-                    // Set defaults from blueprint and query params
                     const defaults: Record<string, any> = {};
                     const params = new URLSearchParams(location.search);
                     def.fields?.forEach((f: any) => {
@@ -51,37 +65,41 @@ export default function RecordForm() {
                                     ? Number(params.get(f.name))
                                     : params.get(f.name);
                             } else if (f.default !== undefined) {
-                                defaults[f.name] = f.default;
-                            } else {
-                                defaults[f.name] = f.type === 'Boolean' ? false : '';
+                                defaults[f.name] = ['Date', 'DateTime'].includes(f.type)
+                                    ? dayjs(f.default === 'now' ? undefined : f.default)
+                                    : f.default;
                             }
                         }
                     });
-                    setFormData(defaults);
+                    form.setFieldsValue(defaults);
                 }
             })
-            .catch(err => setError(err.message))
+            .catch(err => message.error(err.message))
             .finally(() => setLoading(false));
-    }, [module, id, location.search]);
+    }, [module, id, location.search, form, isEditing]);
 
-    const handleChange = (field: any, value: any) => {
-        setFormData(prev => ({ ...prev, [field.name]: value }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onFinish = async (values: any) => {
         if (!module) return;
         setSaving(true);
-        setError(null);
         try {
+            // Process values (convert dayjs back to strings)
+            const processedValues = { ...values };
+            definition.fields?.forEach((f: any) => {
+                if (['Date', 'DateTime'].includes(f.type) && values[f.name]) {
+                    processedValues[f.name] = values[f.name].toISOString();
+                }
+            });
+
             if (isEditing && id) {
-                await api.updateRecord(module, Number(id), formData);
+                await api.updateRecord(module, Number(id), processedValues);
+                message.success('Record updated successfully');
             } else {
-                await api.createRecord(module, formData);
+                await api.createRecord(module, processedValues);
+                message.success('Record created successfully');
             }
             navigate(`/app/${module}`);
         } catch (err: any) {
-            setError(err.message);
+            message.error(err.message);
         } finally {
             setSaving(false);
         }
@@ -89,87 +107,100 @@ export default function RecordForm() {
 
     const displayName = definition?.name ?? module;
 
-    if (loading) {
-        return (
-            <Layout>
-                <div className="p-8 text-slate-400">Loading...</div>
-            </Layout>
-        );
-    }
+    if (loading) return <Layout><div className="p-8"><Skeleton active /></div></Layout>;
 
     return (
         <Layout>
-            <div className="p-8 max-w-5xl mx-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <Link to={`/app/${module}`} className="text-slate-400 hover:text-slate-600 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </Link>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-900">
-                            {isEditing ? `Edit ${displayName}` : `New ${displayName}`}
-                        </h1>
-                        <p className="text-sm text-slate-400 mt-0.5">
-                            {isEditing ? `Editing record #${id}` : `Create a new ${displayName?.toLowerCase()} record`}
-                        </p>
+                <div className="mb-8">
+                    <Breadcrumb
+                        style={{ marginBottom: 16 }}
+                        items={[
+                            { title: <Link to="/"><HomeOutlined /></Link> },
+                            { title: <Link to={`/app/${module}`}>{displayName}</Link> },
+                            { title: isEditing ? 'Edit' : 'New' },
+                        ]}
+                    />
+
+                    <div className="flex items-center gap-4">
+                        <Link to={isEditing ? `/app/${module}/${id}` : `/app/${module}`}>
+                            <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" className="shadow-sm" />
+                        </Link>
+                        <div>
+                            <Title level={2} style={{ margin: 0, fontWeight: 800 }}>
+                                {isEditing ? `Edit ${displayName}` : `New ${displayName}`}
+                            </Title>
+                            <Text type="secondary">
+                                {isEditing ? `Refining record data for #${id}` : `Initialize a new ${displayName?.toLowerCase()} entry`}
+                            </Text>
+                        </div>
                     </div>
                 </div>
 
-                {error && (
-                    <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                        {error}
-                    </div>
-                )}
+                <Card className="premium-card" bodyStyle={{ padding: '32px' }}>
+                    <Form
+                        form={form}
+                        layout="vertical"
+                        onFinish={onFinish}
+                        requiredMark="optional"
+                        size="large"
+                        className="modern-form"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                            {definition?.fields?.map((field: any) => {
+                                const isAutomatic = field.default === 'now()' || field.onupdate;
+                                if (isAutomatic) return null;
 
-                <form onSubmit={handleSubmit} className="card p-6 space-y-5">
-                    {definition?.fields?.map((field: any) => {
-                        const inputType = FIELD_TYPE_MAP[field.type] || 'text';
-                        const isAutomatic = field.default === 'now()' || field.onupdate;
+                                let inputNode = <Input placeholder={`Enter ${field.name.replace(/_/g, ' ')}`} />;
 
-                        if (isAutomatic) return null; // Skip auto-managed fields
+                                if (field.type === 'Integer') inputNode = <InputNumber className="w-full" placeholder="0" />;
+                                if (field.type === 'Float') inputNode = <InputNumber className="w-full" step="0.01" placeholder="0.00" />;
+                                if (field.type === 'Boolean') return (
+                                    <Form.Item
+                                        key={field.name}
+                                        name={field.name}
+                                        label={field.name.replace(/_/g, ' ')}
+                                        valuePropName="checked"
+                                        className="col-span-1"
+                                    >
+                                        <Switch className="bg-slate-200" />
+                                    </Form.Item>
+                                );
+                                if (field.type === 'Date') inputNode = <DatePicker className="w-full" />;
+                                if (field.type === 'DateTime') inputNode = <DatePicker className="w-full" showTime />;
 
-                        return (
-                            <div key={field.name}>
-                                <label className="form-label capitalize">
-                                    {field.name.replace(/_/g, ' ')}
-                                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                                </label>
+                                return (
+                                    <Form.Item
+                                        key={field.name}
+                                        name={field.name}
+                                        label={field.name.replace(/_/g, ' ')}
+                                        rules={[{ required: field.required, message: `${field.name} is required` }]}
+                                        className={field.type === 'String' ? 'col-span-2' : 'col-span-1'}
+                                    >
+                                        {inputNode}
+                                    </Form.Item>
+                                );
+                            })}
+                        </div>
 
-                                {inputType === 'checkbox' ? (
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={!!formData[field.name]}
-                                            onChange={e => handleChange(field, e.target.checked)}
-                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-slate-600">
-                                            {formData[field.name] ? 'Yes' : 'No'}
-                                        </span>
-                                    </label>
-                                ) : (
-                                    <input
-                                        type={inputType}
-                                        value={formData[field.name] ?? ''}
-                                        onChange={e => handleChange(field, inputType === 'number' ? Number(e.target.value) : e.target.value)}
-                                        required={field.required}
-                                        className="form-input"
-                                        placeholder={`Enter ${field.name.replace(/_/g, ' ')}`}
-                                    />
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                        <Link to={`/app/${module}`} className="btn-ghost">Cancel</Link>
-                        <button type="submit" disabled={saving} className="btn-primary">
-                            {saving ? 'Saving...' : isEditing ? 'Save Changes' : `Create ${displayName}`}
-                        </button>
-                    </div>
-                </form>
+                        <div className="flex items-center justify-end gap-3 mt-10 pt-8 border-t border-slate-100">
+                            <Link to={isEditing ? `/app/${module}/${id}` : `/app/${module}`}>
+                                <Button size="large" className="rounded-xl px-8">Cancel</Button>
+                            </Link>
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                loading={saving}
+                                size="large"
+                                icon={<SaveOutlined />}
+                                className="rounded-xl px-10 shadow-lg shadow-blue-100"
+                            >
+                                {isEditing ? 'Save Changes' : `Create ${displayName}`}
+                            </Button>
+                        </div>
+                    </Form>
+                </Card>
             </div>
         </Layout>
     );

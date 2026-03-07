@@ -1,0 +1,26 @@
+name: Role
+module: Admin
+description: "Role-based permissions"
+
+ui:
+  show_in_sidebar: true
+  icon: "shield"
+  default_view: "dashboard"
+
+views:
+  - name: Dashboard
+    type: summary
+  - name: Users
+    type: association
+    target: User
+  - name: Audit Trail
+    type: history
+
+fields:
+  - name: name
+    type: String
+    required: true
+  - name: permissions
+    type: JSON
+    default: '[]'
+    required: true

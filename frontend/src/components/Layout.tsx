@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Layout as AntLayout, Menu, Button, Avatar, Space, Typography, Tooltip } from 'antd';
+import {
+    DashboardOutlined,
+    MenuUnfoldOutlined,
+    MenuFoldOutlined,
+    ArrowLeftOutlined,
+    LogoutOutlined,
+    BlockOutlined
+} from '@ant-design/icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api';
+import type { ModuleDefinition } from '../api';
+import { useAuth } from '../context/AuthContext';
+
+const { Header, Sider, Content } = AntLayout;
+const { Text, Title } = Typography;
 
 interface ModuleGroup {
-    [group: string]: { name: string; slug: string }[];
+    [group: string]: ModuleDefinition[];
 }
 
 interface LayoutProps {
@@ -12,120 +27,169 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
     const [modules, setModules] = useState<ModuleGroup>({});
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+    const [collapsed, setCollapsed] = useState(false);
+    const { user, logout, hasPermission } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        api.fetchModules().then(data => {
-            setModules(data);
-            // Open all groups by default
-            const allOpen: Record<string, boolean> = {};
-            Object.keys(data).forEach(g => (allOpen[g] = true));
-            setOpenGroups(allOpen);
+        api.fetchModules().then(setModules).catch(err => {
+            console.error("Failed to fetch modules:", err);
         });
     }, []);
 
-    const toggleGroup = (group: string) =>
-        setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
 
-    const isActive = (slug: string) => location.pathname.startsWith(`/app/${slug}`);
+    const menuItems = [
+        {
+            key: 'dashboard',
+            icon: <DashboardOutlined />,
+            label: <Link to="/">Dashboard</Link>,
+        },
+        ...Object.entries(modules).map(([group, items]) => {
+            const visibleItems = items.filter(item => {
+                if (item.ui?.show_in_sidebar === false) return false;
+                return hasPermission(`${item.slug}:read`);
+            });
+
+            if (visibleItems.length === 0) return null;
+
+            return {
+                key: group,
+                label: group,
+                icon: <BlockOutlined />,
+                children: visibleItems.map(item => ({
+                    key: item.slug,
+                    label: <Link to={`/app/${item.slug}`}>{item.name}</Link>,
+                })),
+            };
+        }).filter(Boolean),
+    ];
+
+    const getSelectedKeys = () => {
+        if (location.pathname === '/') return ['dashboard'];
+        const parts = location.pathname.split('/');
+        if (parts[2]) return [parts[2]];
+        return [];
+    };
 
     return (
-        <div className="flex min-h-screen w-screen bg-slate-50">
-            {/* Sidebar */}
-            <aside className="w-60 flex-shrink-0 flex flex-col" style={{ background: '#0f1623' }}>
-                {/* Logo */}
-                <div className="px-5 py-5 border-b border-slate-800">
-                    <Link to="/" className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">V</span>
+        <AntLayout style={{ minHeight: '100vh' }}>
+            <Sider
+                trigger={null}
+                collapsible
+                collapsed={collapsed}
+                width={260}
+                style={{
+                    boxShadow: '4px 0 24px rgba(0,0,0,0.02)',
+                    zIndex: 10,
+                    background: '#fff'
+                }}
+            >
+                <div className="flex flex-col h-full">
+                    <div className="p-6 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                            <span className="text-white font-bold text-lg">V</span>
                         </div>
-                        <span className="text-white font-semibold text-sm tracking-wide">Viemed</span>
-                    </Link>
-                </div>
+                        {!collapsed && (
+                            <Title level={4} style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 800 }}>
+                                Viemed
+                            </Title>
+                        )}
+                    </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-                    {/* Dashboard link */}
-                    <Link
-                        to="/"
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${location.pathname === '/'
-                            ? 'bg-blue-600/20 text-blue-400 font-medium'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                            }`}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Dashboard
-                    </Link>
+                    <Menu
+                        mode="inline"
+                        defaultOpenKeys={Object.keys(modules)}
+                        selectedKeys={getSelectedKeys()}
+                        items={menuItems as any}
+                        style={{ flex: 1, borderRight: 0, padding: '0 12px' }}
+                    />
 
-                    {/* Module Groups */}
-                    {Object.entries(modules).map(([group, items]) => {
-                        const visibleItems = items.filter(item => (item as any).ui?.show_in_sidebar !== false);
-                        if (visibleItems.length === 0) return null;
-
-                        return (
-                            <div key={group} className="pt-3">
-                                <button
-                                    onClick={() => toggleGroup(group)}
-                                    className="flex items-center justify-between w-full px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                    {group}
-                                    <svg
-                                        className={`w-3 h-3 transition-transform ${openGroups[group] ? '' : '-rotate-90'}`}
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-
-                                {openGroups[group] && (
-                                    <div className="mt-1 space-y-0.5">
-                                        {visibleItems.map(item => (
-                                            <Link
-                                                key={item.slug}
-                                                to={`/app/${item.slug}`}
-                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${isActive(item.slug)
-                                                    ? 'bg-blue-600/20 text-blue-400 font-medium'
-                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                                    }`}
-                                            >
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                                                {item.name}
-                                            </Link>
-                                        ))}
+                    <div className="p-4 border-t border-slate-100">
+                        <div className="flex flex-col gap-3">
+                            {!collapsed && (
+                                <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                                    <Avatar size="small" style={{ backgroundColor: '#3b82f6' }}>{user?.full_name?.charAt(0)}</Avatar>
+                                    <div className="flex-1 min-w-0">
+                                        <Text strong className="block text-xs truncate">{user?.full_name}</Text>
+                                        <Text type="secondary" className="block text-[10px] truncate">{user?.role?.name}</Text>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </nav>
-            </aside>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Topbar */}
-                <header className="h-14 bg-white border-b border-slate-200 flex items-center px-6 gap-3 flex-shrink-0">
-                    <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <div className="flex-1" />
-                    <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-700 text-xs font-semibold">U</span>
+                                </div>
+                            )}
+                            <Button
+                                type="text"
+                                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                                onClick={() => setCollapsed(!collapsed)}
+                                block
+                                style={{ height: 40, borderRadius: 10 }}
+                            >
+                                {!collapsed && "Collapse"}
+                            </Button>
                         </div>
                     </div>
-                </header>
+                </div>
+            </Sider>
 
-                {/* Page Content */}
-                <main className="flex-1 overflow-auto">
-                    {children}
-                </main>
-            </div>
-        </div>
+            <AntLayout>
+                <Header style={{
+                    padding: '0 24px',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    borderBottom: '1px solid #f1f5f9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    height: 64,
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 9,
+                }}>
+                    <Space size={16}>
+                        {location.pathname !== '/' && (
+                            <Button
+                                icon={<ArrowLeftOutlined />}
+                                onClick={() => navigate(-1)}
+                                type="text"
+                                style={{ borderRadius: 8 }}
+                            />
+                        )}
+                        <Text strong style={{ fontSize: 16 }}>
+                            {location.pathname === '/' ? 'Dashboard' : ''}
+                        </Text>
+                    </Space>
+
+                    <Space size={16}>
+                        <Tooltip title="Logout">
+                            <Button
+                                type="text"
+                                shape="circle"
+                                icon={<LogoutOutlined />}
+                                onClick={() => logout()}
+                                danger
+                            />
+                        </Tooltip>
+                        <Avatar
+                            style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 600 }}
+                        >
+                            {user?.full_name?.charAt(0)}
+                        </Avatar>
+                    </Space>
+                </Header>
+
+                <Content style={{ padding: '32px', minHeight: 280, maxWidth: 1600, margin: '0 auto', width: '100%' }}>
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                        >
+                            {children}
+                        </motion.div>
+                    </AnimatePresence>
+                </Content>
+            </AntLayout>
+        </AntLayout>
     );
 }

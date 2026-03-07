@@ -1,18 +1,53 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import DynamicRoute from './pages/DynamicRoute';
+import Login from './pages/Login';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/app/:module" element={<DynamicRoute type="List" />} />
-        <Route path="/app/:module/new" element={<DynamicRoute type="Form" />} />
-        <Route path="/app/:module/:id" element={<DynamicRoute type="View" />} />
-        <Route path="/app/:module/:id/edit" element={<DynamicRoute type="Form" />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route path="/" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+
+          <Route path="/app/:module" element={
+            <ProtectedRoute><DynamicRoute type="List" /></ProtectedRoute>
+          } />
+          <Route path="/app/:module/new" element={
+            <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
+          } />
+          <Route path="/app/:module/:id" element={
+            <ProtectedRoute><DynamicRoute type="View" /></ProtectedRoute>
+          } />
+          <Route path="/app/:module/:id/edit" element={
+            <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

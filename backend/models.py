@@ -7,7 +7,6 @@ from database import Base
 class Document(Base):
     __tablename__ = 'documents'
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer)
     title = Column(String)
     file_url = Column(String)
     uploaded_at = Column(DateTime, default=func.now())
@@ -24,7 +23,7 @@ class Note(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class Humans(Base):
-    __tablename__ = 'humanss'
+    __tablename__ = 'humans'
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
@@ -46,10 +45,15 @@ class AuditLog(Base):
     actor = Column(String, default='System User')
     timestamp = Column(DateTime, default=func.now())
 
+class Role(Base):
+    __tablename__ = 'roles'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    permissions = Column(JSON, default=[])
+
 class Encounter(Base):
     __tablename__ = 'encounters'
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer)
     encounter_date = Column(DateTime, default=func.now())
     type = Column(String)
     status = Column(String, default='Scheduled')
@@ -61,9 +65,13 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String)
     full_name = Column(String)
+    hashed_password = Column(String)
+    format = Column(String, default='standard')
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    role_id = Column(Integer, ForeignKey('roles.id'))
+    role = relationship('Role')
 
 class Patient(Base):
     __tablename__ = 'patients'
@@ -84,7 +92,7 @@ class Comment(Base):
     created_at = Column(DateTime, default=func.now())
 
 class Projects(Base):
-    __tablename__ = 'projectss'
+    __tablename__ = 'projects'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     description = Column(String)

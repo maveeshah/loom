@@ -1,14 +1,32 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8010';
 
+const getToken = () => localStorage.getItem('viemed_token');
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+    const token = getToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options?.headers,
+    };
+
     const res = await fetch(`${BASE_URL}${path}`, {
-        headers: { 'Content-Type': 'application/json', ...options?.headers },
         ...options,
+        headers,
     });
+
+    if (res.status === 401) {
+        localStorage.removeItem('viemed_token');
+        if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+        }
+    }
+
     if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(err.detail || `Request failed with status ${res.status}`);
     }
+
     if (res.status === 204) return undefined as T;
     return res.json();
 }
@@ -34,6 +52,25 @@ export interface ModuleDefinition {
 }
 
 export const api = {
+    // Auth
+    login: async (email: string, password: string) => {
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
+
+        const data: any = await request('/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        localStorage.setItem('viemed_token', data.access_token);
+        return data;
+    },
+    logout: () => {
+        localStorage.removeItem('viemed_token');
+        window.location.href = '/login';
+    },
+
     // Module registry
     fetchModules: () => request<Record<string, ModuleDefinition[]>>('/v1/modules'),
     fetchModuleDefinition: (slug: string) => request<any>(`/v1/modules/${slug}`),
@@ -51,3 +88,4 @@ export const api = {
     deleteRecord: (slug: string, id: number) =>
         request<void>(`/v1/app/${slug}/${id}`, { method: 'DELETE' }),
 };
+

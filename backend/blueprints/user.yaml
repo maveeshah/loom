@@ -1,5 +1,23 @@
 name: User
 module: Admin
+description: "Application users"
+
+ui:
+  show_in_sidebar: true
+  icon: "users"
+  default_view: "dashboard"
+
+associations:
+  - type: belongs_to
+    target: Role
+    foreign_key: role_id
+
+views:
+  - name: Dashboard
+    type: summary
+  - name: Audit Trail
+    type: history
+
 fields:
   - name: email
     type: String
@@ -7,6 +25,12 @@ fields:
   - name: full_name
     type: String
     required: true
+  - name: hashed_password
+    type: String
+    required: true
+  - name: format
+    type: String
+    default: "standard"
   - name: is_active
     type: Boolean
     default: true
