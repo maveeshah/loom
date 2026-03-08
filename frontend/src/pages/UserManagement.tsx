@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Typography, Select, message, Tag, Space, Button, Modal, Form, Input, Switch, Avatar } from 'antd';
 import { UserOutlined, CheckCircleOutlined, CloseCircleOutlined, EditOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
-import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DataTable } from '../components/ui/DataTable';
@@ -117,10 +116,10 @@ export default function UserManagement() {
         },
     ];
 
-    if (loading && users.length === 0) return <Layout><div className="max-w-6xl mx-auto"><LoadingState /></div></Layout>;
+    if (loading && users.length === 0) return <div className="max-w-6xl mx-auto"><LoadingState /></div>;
 
     return (
-        <Layout>
+        <>
             <div className="max-w-6xl mx-auto">
                 <PageHeader
                     title="User Directory"
@@ -221,6 +220,6 @@ export default function UserManagement() {
                     </Form>
                 </Modal>
             </div>
-        </Layout>
+        </>
     );
 }

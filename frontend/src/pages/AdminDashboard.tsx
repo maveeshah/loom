@@ -10,7 +10,6 @@ import {
     ArrowRightOutlined
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
-import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
@@ -50,10 +49,10 @@ export default function AdminDashboard() {
         });
     }, []);
 
-    if (loading) return <Layout><div className="max-w-7xl mx-auto"><LoadingState /></div></Layout>;
+    if (loading) return <div className="max-w-7xl mx-auto"><LoadingState /></div>;
 
     return (
-        <Layout>
+        <>
             <div className="max-w-7xl mx-auto">
                 <PageHeader
                     title="Admin Dashboard"
@@ -165,6 +164,6 @@ export default function AdminDashboard() {
                     </Col>
                 </Row>
             </div>
-        </Layout>
+        </>
     );
 }

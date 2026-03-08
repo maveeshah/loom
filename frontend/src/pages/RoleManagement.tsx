@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, Typography, Button, message, Tag, Space, Modal, Checkbox, Form, Input, Collapse } from 'antd';
 import { PlusOutlined, EditOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DataTable } from '../components/ui/DataTable';
@@ -116,10 +115,10 @@ export default function RoleManagement() {
         },
     ];
 
-    if (loading && roles.length === 0) return <Layout><div className="max-w-6xl mx-auto"><LoadingState /></div></Layout>;
+    if (loading && roles.length === 0) return <div className="max-w-6xl mx-auto"><LoadingState /></div>;
 
     return (
-        <Layout>
+        <>
             <div className="max-w-6xl mx-auto">
                 <PageHeader
                     title="Role Management"
@@ -213,6 +212,6 @@ export default function RoleManagement() {
                     </Form>
                 </Modal>
             </div>
-        </Layout>
+        </>
     );
 }
