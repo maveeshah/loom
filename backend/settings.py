@@ -19,8 +19,12 @@ class Settings(BaseSettings):
     app_title: str = "Loom API"
 
     # Comma-separated list of allowed CORS origins.
+    # In production, this MUST be overridden via the LOOM_ALLOWED_ORIGINS environment variable
+    # to explicitly list the domains that are permitted to access the API.
+    # e.g., LOOM_ALLOWED_ORIGINS="https://app.mycompany.com"
     allowed_origins: List[str] = [
-        "*",
+        "http://localhost:3000",
+        "http://localhost:3010",
     ]
 
     # One or more directories (relative to the backend package root) to search

@@ -55,7 +55,7 @@ class AuditLog(Base):
     model_name = Column(String)
     record_id = Column(Integer)
     action = Column(String)
-    changes = Column(String)
+    changes = Column(JSON)  # Better for querying historical changes
     actor = Column(String, default="System User")
     timestamp = Column(DateTime, default=func.now())
 

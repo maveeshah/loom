@@ -11,6 +11,8 @@ import json
 from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
+from pydantic import BaseModel, create_model
+from typing import Any, Optional, Dict
 import admin_router
 import settings_router
 from plugin_registry import registry
@@ -53,6 +55,63 @@ def load_blueprints(settings: Settings) -> list[dict]:
     return blueprints
 
 
+def create_pydantic_model_from_blueprint(blueprint: dict, is_update: bool = False) -> type[BaseModel]:
+    """
+    Dynamically generate a Pydantic model for validation and OpenAPI docs based on a YAML blueprint.
+    If `is_update` is True, all fields become optional (like a PATCH operation).
+    """
+    model_name = blueprint.get("name", "UnknownModel").replace(" ", "")
+    fields = blueprint.get("fields", [])
+
+    # Map blueprint types to Python types
+    type_mapping = {
+        "String": str,
+        "Integer": int,
+        "Float": float,
+        "Boolean": bool,
+        "JSON": Dict[str, Any],
+        "DateTime": datetime,
+        "Date": datetime, # Simple approximation for date
+    }
+
+    model_fields = {}
+
+    # Always allow an ID in update payloads just in case, though it's typically in the URL
+    if is_update:
+        model_fields["id"] = (Optional[int], None)
+
+    for field in fields:
+        f_name = field["name"]
+        f_type_str = field.get("type", "String")
+        py_type = type_mapping.get(f_type_str, Any)
+
+        is_required = field.get("required", False)
+
+        if is_update:
+            # Everything is optional in a PUT/PATCH unless specifically needed
+            model_fields[f_name] = (Optional[py_type], None)
+        else:
+            if is_required:
+                model_fields[f_name] = (py_type, ...)
+            else:
+                default_val = field.get("default", None)
+                if default_val == "now()":
+                    default_val = None # We let the DB handle it
+                model_fields[f_name] = (Optional[py_type], default_val)
+
+    # Add foreign keys dynamically
+    for assoc in blueprint.get("associations", []):
+        if assoc.get("type") == "belongs_to":
+            fk_name = assoc.get("foreign_key", f"{assoc.get('target', '').lower()}_id")
+            if is_update:
+                model_fields[fk_name] = (Optional[int], None)
+            else:
+                model_fields[fk_name] = (Optional[int], None)
+
+    suffix = "Update" if is_update else "Create"
+    return create_model(f"{model_name}{suffix}", **model_fields)
+
+
 def log_audit(
     db: Session,
     model_name: str,
@@ -70,7 +129,7 @@ def log_audit(
             model_name=model_name,
             record_id=record_id,
             action=action,
-            changes=json.dumps(changes) if changes else None,
+            changes=changes, # Now passing dict directly as the column is JSON
             actor=actor,
             timestamp=datetime.utcnow(),
         )
@@ -206,6 +265,122 @@ def create_app(settings: Settings = None) -> FastAPI:
         return query
 
     # ─── Records CRUD ────────────────────────────────────────────────────
+    # 1. First, build the generic endpoints programmatically based on blueprints so FastAPI
+    #    can generate the correct OpenAPI docs and validations using the dynamic Pydantic models.
+    for bp in load_blueprints(settings):
+        bp_name = bp.get("name", "")
+        if not bp_name:
+            continue
+
+        model_name = bp_name.replace(" ", "")
+        slug = bp.get("slug", bp_name.lower().replace(" ", "_"))
+
+        # Create dynamic schemas
+        CreateSchema = create_pydantic_model_from_blueprint(bp, is_update=False)
+        UpdateSchema = create_pydantic_model_from_blueprint(bp, is_update=True)
+
+        def create_route_handler(m_name=model_name, schema=CreateSchema):
+            def route_handler(
+                data: schema,
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_user),
+            ):
+                check_permissions(current_user, f"{m_name.lower()}:write")
+                model = get_model_by_name(m_name)
+
+                # Convert the validated Pydantic model to a dict, excluding unset fields
+                data_dict = data.dict(exclude_unset=True)
+
+                # PRE HOOK
+                registry.hooks.execute(m_name, "before_create", data_dict, current_user, db)
+
+                instance = model(**data_dict)
+                db.add(instance)
+                db.commit()
+                db.refresh(instance)
+
+                # POST HOOK
+                registry.hooks.execute(m_name, "after_create", instance, current_user, db)
+
+                if settings.enable_audit:
+                    log_audit(
+                        db,
+                        m_name,
+                        instance.id,
+                        "Created",
+                        changes=data_dict,
+                        actor=current_user.full_name,
+                    )
+                return model_to_dict(instance)
+            return route_handler
+
+        def update_route_handler(m_name=model_name, schema=UpdateSchema):
+            def route_handler(
+                record_id: int,
+                data: schema,
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_user),
+            ):
+                check_permissions(current_user, f"{m_name.lower()}:write")
+                model = get_model_by_name(m_name)
+                query = get_scoped_query(model, db, current_user)
+                instance = query.filter(model.id == record_id).first()
+                if not instance:
+                    raise HTTPException(status_code=404, detail="Record not found")
+
+                data_dict = data.dict(exclude_unset=True)
+
+                # PRE HOOK
+                registry.hooks.execute(m_name, "before_update", instance, data_dict, current_user, db)
+
+                changes = {}
+                for key, value in data_dict.items():
+                    if hasattr(instance, key) and key != "id":
+                        old_value = getattr(instance, key)
+                        if old_value != value:
+                            changes[key] = {"old": old_value, "new": value}
+                        setattr(instance, key, value)
+
+                db.commit()
+                db.refresh(instance)
+
+                # POST HOOK
+                registry.hooks.execute(m_name, "after_update", instance, changes, current_user, db)
+
+                if changes and settings.enable_audit:
+                    log_audit(
+                        db,
+                        m_name,
+                        instance.id,
+                        "Updated",
+                        changes=changes,
+                        actor=current_user.full_name,
+                    )
+                return model_to_dict(instance)
+            return route_handler
+
+        # Add explicit typed routes for this specific model slug
+        # We mount them dynamically so that FastAPI discovers the schemas!
+        core_router.add_api_route(
+            f"/app/{slug}",
+            create_route_handler(),
+            methods=["POST"],
+            status_code=201,
+            response_model=None, # generic dict returned
+            tags=[bp_name]
+        )
+
+        core_router.add_api_route(
+            f"/app/{slug}/{{record_id}}",
+            update_route_handler(),
+            methods=["PUT"],
+            response_model=None,
+            tags=[bp_name]
+        )
+
+    # ─── Generic Fallback GET / DELETE ─────────────────────────────────────────
+    # We still use generic string-based route definitions for GET / DELETE because
+    # they don't require complex Pydantic request body validation.
     @core_router.get("/app/{model_name}")
     def list_records(
         model_name: str,
@@ -246,37 +421,6 @@ def create_app(settings: Settings = None) -> FastAPI:
             "offset": offset,
         }
 
-    @core_router.post("/app/{model_name}", status_code=201)
-    def create_record(
-        model_name: str,
-        data: dict,
-        db: Session = Depends(get_db),
-        current_user: models.User = Depends(get_current_user),
-    ):
-        check_permissions(current_user, f"{model_name.lower()}:write")
-        model = get_model_by_name(model_name)
-
-        # PRE HOOK
-        registry.hooks.execute(model_name, "before_create", data, current_user, db)
-
-        instance = model(**data)
-        db.add(instance)
-        db.commit()
-        db.refresh(instance)
-
-        # POST HOOK
-        registry.hooks.execute(model_name, "after_create", instance, current_user, db)
-
-        if settings.enable_audit:
-            log_audit(
-                db,
-                model_name,
-                instance.id,
-                "Created",
-                changes=data,
-                actor=current_user.full_name,
-            )
-        return model_to_dict(instance)
 
     @core_router.get("/app/{model_name}/{record_id}")
     def get_record(
@@ -293,52 +437,6 @@ def create_app(settings: Settings = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="Record not found")
         return model_to_dict(instance)
 
-    @core_router.put("/app/{model_name}/{record_id}")
-    def update_record(
-        model_name: str,
-        record_id: int,
-        data: dict,
-        db: Session = Depends(get_db),
-        current_user: models.User = Depends(get_current_user),
-    ):
-        check_permissions(current_user, f"{model_name.lower()}:write")
-        model = get_model_by_name(model_name)
-        query = get_scoped_query(model, db, current_user)
-        instance = query.filter(model.id == record_id).first()
-        if not instance:
-            raise HTTPException(status_code=404, detail="Record not found")
-
-        # PRE HOOK
-        registry.hooks.execute(
-            model_name, "before_update", instance, data, current_user, db
-        )
-
-        changes = {}
-        for key, value in data.items():
-            if hasattr(instance, key) and key != "id":
-                old_value = getattr(instance, key)
-                if old_value != value:
-                    changes[key] = {"old": old_value, "new": value}
-                setattr(instance, key, value)
-
-        db.commit()
-        db.refresh(instance)
-
-        # POST HOOK
-        registry.hooks.execute(
-            model_name, "after_update", instance, changes, current_user, db
-        )
-
-        if changes and settings.enable_audit:
-            log_audit(
-                db,
-                model_name,
-                instance.id,
-                "Updated",
-                changes=changes,
-                actor=current_user.full_name,
-            )
-        return model_to_dict(instance)
 
     @core_router.delete("/app/{model_name}/{record_id}", status_code=204)
     def delete_record(
