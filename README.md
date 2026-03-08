@@ -60,5 +60,24 @@ To create database migrations after modifying a YAML blueprint:
 1. Create `backend/blueprints/my_module.yaml`.
 2. Define the schema according to the [Blueprints Reference](docs/blueprints.md).
 3. Run `./make_migrations.sh` to update models and generate a database migration.
-4. The backend automatically manages the database and exposes generic CRUD `/v1/app/my_module`.
-4. The frontend renders `/app/my_module` dynamically without writing boilerplate React code.
+4. The backend automatically manages the database and exposes generic CRUD `/v1/app/my_module` with dynamic Pydantic payload validation and automatic OpenAPI Swagger documentation.
+5. The frontend renders `/app/my_module` dynamically without writing boilerplate React code, complete with pagination, search, and lazy-loaded plugins.
+
+## Out of the Box Functionality
+
+By simply writing a YAML blueprint, Loom provides the following enterprise-grade features for free:
+
+### Backend
+*   **Generic REST APIs**: Fully functional `GET`, `POST`, `PUT`, and `DELETE` endpoints.
+*   **Dynamic Validation**: Pydantic models are generated on-the-fly from your YAML file, ensuring all API payloads are strictly validated against your defined schema types and required fields.
+*   **Auto-generated Swagger Docs**: Because of the dynamic Pydantic models, FastAPI automatically generates accurate OpenAPI documentation for every single generic endpoint at `/docs`.
+*   **Row-Level Security (Data Scoping)**: Built-in multi-tenancy support. If a model has a `tenant_id` column, the generic endpoints automatically scope all queries to the requesting user's tenant (unless they are a Superadmin).
+*   **Scalable Querying**: List endpoints (`GET /app/{module}`) support `limit` and `offset` pagination, and strict column-level filtering (preventing malicious relational table-scans).
+*   **Rich Audit Logging**: Every `POST`, `PUT`, and `DELETE` automatically records the actor and the exact `changes` diff in a specialized JSON column, enabling powerful historical queries.
+*   **Lifecycle Hooks**: Register Python functions to run `before_create`, `after_update`, etc., without ever modifying the core framework routers.
+
+### Frontend
+*   **Dynamic Routing & Navigation**: The Vite app reads the blueprint registry and builds the sidebar and routing automatically.
+*   **Auto-generated Data Tables**: Generic `ModuleListView` provides sortable, searchable, and paginated data tables based on blueprint fields.
+*   **Multi-Tab Record Views**: The `RecordView` dynamically composes "Overview" summaries alongside Association tables (e.g., showing a Patient's Encounters), Comments threads, and interactive Audit Trail timelines.
+*   **Lazy Loaded Plugins**: Custom UI tabs and widgets (like an advanced analytics dashboard) are code-split and loaded via `React.lazy()` only when a user navigates to them, keeping the initial bundle size incredibly small.
