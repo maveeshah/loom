@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Table,
     Button,
     Space,
     Typography,
-    Card,
-    Breadcrumb,
     Tooltip,
     Popconfirm,
     message,
@@ -18,13 +15,14 @@ import {
     EyeOutlined,
     EditOutlined,
     DeleteOutlined,
-    SearchOutlined,
-    HomeOutlined
+    SearchOutlined
 } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { api } from '../api';
+import { PageHeader } from '../components/ui/PageHeader';
+import { DataTable } from '../components/ui/DataTable';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function ModuleListView() {
     const { module } = useParams<{ module: string }>();
@@ -152,46 +150,34 @@ export default function ModuleListView() {
     return (
         <Layout>
             <div className="max-w-7xl mx-auto">
-                <div className="mb-6 flex justify-between items-end">
-                    <div>
-                        <Breadcrumb
-                            style={{ marginBottom: 12 }}
-                            items={[
-                                { title: <Link to="/"><HomeOutlined /></Link> },
-                                { title: 'Applications' },
-                                { title: displayName },
-                            ]}
-                        />
-                        <Title level={2} style={{ margin: 0, fontWeight: 800 }}>{displayName}</Title>
-                        <Text type="secondary">{records.length} records found in this module</Text>
-                    </div>
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<PlusOutlined />}
-                        onClick={() => navigate(`/app/${module}/new`)}
-                        className="btn-primary-new"
-                    >
-                        New {displayName}
-                    </Button>
-                </div>
+                <PageHeader
+                    title={displayName || ''}
+                    subtitle={`${records.length} records found in this module`}
+                    breadcrumbItems={[
+                        { title: 'Applications' },
+                        { title: displayName },
+                    ]}
+                    extra={
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<PlusOutlined />}
+                            onClick={() => navigate(`/app/${module}/new`)}
+                        >
+                            New {displayName}
+                        </Button>
+                    }
+                />
 
-                <Card className="premium-card overflow-hidden" bodyStyle={{ padding: 0 }}>
-                    <Table
-                        columns={columns}
-                        dataSource={records}
-                        loading={loading}
-                        rowKey="id"
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            showTotal: (total) => `Total ${total} items`,
-                        }}
-                        scroll={{ x: 'max-content' }}
-                        className="modern-table"
-                    />
-                </Card>
+                <DataTable
+                    columns={columns}
+                    dataSource={records}
+                    loading={loading}
+                    rowKey="id"
+                    scroll={{ x: 'max-content' }}
+                />
             </div>
         </Layout>
     );
 }
+

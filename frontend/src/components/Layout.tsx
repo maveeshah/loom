@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { useAuth } from '../context/AuthContext';
-import { config } from '../framework/config';
 
 const { Header, Sider, Content } = AntLayout;
 const { Text, Title } = Typography;
@@ -87,26 +86,28 @@ export default function Layout({ children }: LayoutProps) {
     };
 
     return (
-        <AntLayout style={{ minHeight: '100vh', flexDirection: config.layout.sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
+        <AntLayout style={{ minHeight: '100vh' }}>
             <Sider
                 trigger={null}
                 collapsible
                 collapsed={collapsed}
-                width={260}
+                width={280}
+                className="glass-effect"
                 style={{
-                    boxShadow: '4px 0 24px rgba(0,0,0,0.02)',
                     zIndex: 10,
-                    background: '#fff'
+                    position: 'sticky',
+                    top: 0,
+                    height: '100vh',
                 }}
             >
-                <div className="flex flex-col h-full">
-                    <div className="p-6 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
-                            <span className="text-white font-bold text-lg">V</span>
+                <div className="flex flex-col h-full bg-white/50 backdrop-blur-xl">
+                    <div className="p-8 pb-6 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                            <span className="text-white font-black text-xl tracking-tighter">V</span>
                         </div>
                         {!collapsed && (
-                            <Title level={4} style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 800 }}>
-                                Loom
+                            <Title level={4} className="!m-0 text-xl font-black tracking-tight text-slate-800">
+                                Viemed
                             </Title>
                         )}
                     </div>
@@ -116,17 +117,17 @@ export default function Layout({ children }: LayoutProps) {
                         defaultOpenKeys={Object.keys(modules)}
                         selectedKeys={getSelectedKeys()}
                         items={menuItems as any}
-                        style={{ flex: 1, borderRight: 0, padding: '0 12px' }}
+                        style={{ flex: 1, borderRight: 0, padding: '0 16px' }}
                     />
 
-                    <div className="p-4 border-t border-slate-100">
-                        <div className="flex flex-col gap-3">
+                    <div className="p-6 border-t border-slate-100">
+                        <div className="flex flex-col gap-4">
                             {!collapsed && (
-                                <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                                    <Avatar size="small" style={{ backgroundColor: '#3b82f6' }}>{user?.full_name?.charAt(0)}</Avatar>
+                                <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                    <Avatar size="large" className="bg-blue-600 shadow-sm">{user?.full_name?.charAt(0)}</Avatar>
                                     <div className="flex-1 min-w-0">
-                                        <Text strong className="block text-xs truncate">{user?.full_name}</Text>
-                                        <Text type="secondary" className="block text-[10px] truncate">{user?.role?.name}</Text>
+                                        <Text strong className="block text-sm truncate text-slate-900">{user?.full_name}</Text>
+                                        <Text type="secondary" className="block text-xs truncate font-medium uppercase tracking-wider opacity-60">{user?.role?.name}</Text>
                                     </div>
                                 </div>
                             )}
@@ -135,44 +136,32 @@ export default function Layout({ children }: LayoutProps) {
                                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                                 onClick={() => setCollapsed(!collapsed)}
                                 block
-                                style={{ height: 40, borderRadius: 10 }}
+                                className="h-12 rounded-xl hover:bg-slate-50 text-slate-500 font-semibold"
                             >
-                                {!collapsed && "Collapse"}
+                                {!collapsed && "Collapse Sidebar"}
                             </Button>
                         </div>
                     </div>
                 </div>
             </Sider>
 
-            <AntLayout>
-                <Header style={{
-                    padding: '0 24px',
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(8px)',
-                    borderBottom: '1px solid #f1f5f9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    height: 64,
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 9,
-                }}>
-                    <Space size={16}>
+            <AntLayout className="bg-[#f8fafc]">
+                <Header className="px-8 bg-white/70 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between h-20">
+                    <Space size={20}>
                         {location.pathname !== '/' && (
                             <Button
                                 icon={<ArrowLeftOutlined />}
                                 onClick={() => navigate(-1)}
                                 type="text"
-                                style={{ borderRadius: 8 }}
+                                className="w-10 h-10 rounded-xl hover:bg-slate-100"
                             />
                         )}
-                        <Text strong style={{ fontSize: 16 }}>
+                        <Title level={5} className="!m-0 text-slate-400 font-medium">
                             {location.pathname === '/' ? 'Dashboard' : ''}
-                        </Text>
+                        </Title>
                     </Space>
 
-                    <Space size={16}>
+                    <Space size={20}>
                         <Tooltip title="Logout">
                             <Button
                                 type="text"
@@ -180,24 +169,29 @@ export default function Layout({ children }: LayoutProps) {
                                 icon={<LogoutOutlined />}
                                 onClick={() => logout()}
                                 danger
+                                className="w-10 h-10 hover:bg-rose-50"
                             />
                         </Tooltip>
-                        <Avatar
-                            style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 600 }}
-                        >
-                            {user?.full_name?.charAt(0)}
-                        </Avatar>
+                        <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
+                            <Text strong className="hidden sm:block text-slate-700">{user?.full_name}</Text>
+                            <Avatar
+                                size="large"
+                                className="bg-blue-50 text-blue-600 font-bold border-2 border-white shadow-sm"
+                            >
+                                {user?.full_name?.charAt(0)}
+                            </Avatar>
+                        </div>
                     </Space>
                 </Header>
 
-                <Content style={{ padding: '32px', minHeight: 280, maxWidth: 1600, margin: '0 auto', width: '100%' }}>
+                <Content className="p-8 md:p-12 min-h-[280px] max-w-[1600px] mx-auto w-full">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={location.pathname}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.3, ease: 'circOut' }}
                         >
                             {children}
                         </motion.div>
@@ -207,3 +201,4 @@ export default function Layout({ children }: LayoutProps) {
         </AntLayout>
     );
 }
+

@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Typography, Row, Col, Card, Skeleton, Statistic, Empty } from 'antd';
+import { Row, Col, Typography } from 'antd';
 import {
-    RightOutlined,
     AppstoreOutlined,
     DatabaseOutlined,
     DeploymentUnitOutlined,
-    GlobalOutlined
+    GlobalOutlined,
+    RightOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { StatCard } from '../components/ui/StatCard';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LoadingState, EmptyState } from '../components/ui/Feedback';
 
 const { Title, Text } = Typography;
 
@@ -59,50 +62,32 @@ export default function Dashboard() {
     return (
         <Layout>
             <div className="max-w-7xl mx-auto">
-                <div className="mb-12">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <Title level={2} style={{ fontWeight: 800, marginBottom: 8 }}>
-                            Module Dashboard
-                        </Title>
-                        <Text type="secondary" style={{ fontSize: 16 }}>
-                            A unified toolkit for managing your platform's data domains and modules.
-                        </Text>
-                    </motion.div>
+                <PageHeader
+                    title="Module Dashboard"
+                    subtitle="A unified toolkit for managing your platform's data domains and modules."
+                />
 
-                    <Row gutter={[24, 24]} className="mt-8">
-                        <Col xs={24} sm={12} md={8}>
-                            <Card className="glass-card" bordered={false}>
-                                <Statistic
-                                    title="Accessible Modules"
-                                    value={visibleModuleCount}
-                                    prefix={<AppstoreOutlined className="text-blue-500 mr-2" />}
-                                />
-                            </Card>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                            <Card className="glass-card" bordered={false}>
-                                <Statistic
-                                    title="Environment"
-                                    value="Production"
-                                    prefix={<GlobalOutlined className="text-emerald-500 mr-2" />}
-                                />
-                            </Card>
-                        </Col>
-                    </Row>
-                </div>
+                <Row gutter={[24, 24]} className="mb-12">
+                    <Col xs={24} sm={12} md={8}>
+                        <StatCard
+                            title="Accessible Modules"
+                            value={visibleModuleCount}
+                            icon={<AppstoreOutlined />}
+                            trend={{ value: '12%', isUp: true }}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                        <StatCard
+                            title="Environment"
+                            value="Production"
+                            icon={<GlobalOutlined />}
+                            description="Viemed Live Infrastructure"
+                        />
+                    </Col>
+                </Row>
 
                 {loading ? (
-                    <Row gutter={[24, 24]}>
-                        {[1, 2, 3].map(i => (
-                            <Col xs={24} key={i}>
-                                <Skeleton active round />
-                            </Col>
-                        ))}
-                    </Row>
+                    <LoadingState />
                 ) : (
                     <motion.div
                         variants={container}
@@ -123,7 +108,7 @@ export default function Dashboard() {
                                             {groupIcons[group] || <DatabaseOutlined />}
                                         </div>
                                         <div>
-                                            <Title level={4} style={{ margin: 0, fontWeight: 700 }}>{group}</Title>
+                                            <Title level={4} className="!m-0 font-bold">{group}</Title>
                                             <Text type="secondary" className="text-xs uppercase tracking-widest font-bold opacity-50">
                                                 {visibleItems.length} Available
                                             </Text>
@@ -135,26 +120,22 @@ export default function Dashboard() {
                                             <Col xs={24} sm={12} lg={8} xl={6} key={item.slug}>
                                                 <motion.div variants={itemAnim} whileHover={{ y: -5 }} transition={{ type: 'spring', stiffness: 300 }}>
                                                     <Link to={`/app/${item.slug}`}>
-                                                        <Card
-                                                            hoverable
-                                                            className="premium-card h-full"
-                                                            bodyStyle={{ padding: '28px' }}
-                                                        >
+                                                        <div className="premium-card p-6 h-full flex flex-col cursor-pointer">
                                                             <div className="flex justify-between items-start mb-6">
                                                                 <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 text-2xl font-black">
                                                                     {item.name.charAt(0)}
                                                                 </div>
-                                                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-300">
                                                                     <RightOutlined style={{ fontSize: 12 }} />
                                                                 </div>
                                                             </div>
-                                                            <Title level={5} style={{ margin: '0 0 8px 0', fontWeight: 700 }}>
+                                                            <Title level={5} className="!m-0 mb-2 font-bold">
                                                                 {item.name}
                                                             </Title>
                                                             <Text type="secondary" className="text-sm line-clamp-2 leading-relaxed">
                                                                 Comprehensive management of {item.name.toLowerCase()} assets and records.
                                                             </Text>
-                                                        </Card>
+                                                        </div>
                                                     </Link>
                                                 </motion.div>
                                             </Col>
@@ -165,12 +146,7 @@ export default function Dashboard() {
                         })}
 
                         {visibleModuleCount === 0 && (
-                            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-                                <Empty
-                                    description="No modules are currently accessible with your permissions."
-                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                />
-                            </div>
+                            <EmptyState message="No modules are currently accessible with your permissions." />
                         )}
                     </motion.div>
                 )}
@@ -178,3 +154,4 @@ export default function Dashboard() {
         </Layout>
     );
 }
+

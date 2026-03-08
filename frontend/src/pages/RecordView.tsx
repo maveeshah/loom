@@ -12,24 +12,22 @@ import {
     Avatar,
     Input,
     message,
-    Skeleton,
     Popconfirm,
-    Empty,
-    Breadcrumb
+    Empty
 } from 'antd';
 import {
     EditOutlined,
     DeleteOutlined,
-    ArrowLeftOutlined,
     LinkOutlined,
-    UserOutlined,
-    HomeOutlined
+    UserOutlined
 } from '@ant-design/icons';
-import { motion } from 'framer-motion';
+
 import Layout from '../components/Layout';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { pluginRegistry } from '../framework/pluginRegistry';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LoadingState, EmptyState } from '../components/ui/Feedback';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -51,7 +49,7 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
     return (
         <div className="py-4">
             <div className="flex justify-between items-center mb-6">
-                <Title level={4} style={{ margin: 0 }}>{view.name}</Title>
+                <Title level={4} className="!m-0 font-bold">{view.name}</Title>
                 <Link to={`/app/${view.target.toLowerCase()}/new?${module.toLowerCase()}_id=${record.id}`}>
                     <Button type="primary" icon={<LinkOutlined />}>
                         Add {view.target}
@@ -59,9 +57,9 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
                 </Link>
             </div>
             {loading ? (
-                <Skeleton active />
+                <LoadingState />
             ) : records.length > 0 ? (
-                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                <div className="border border-slate-100 rounded-2xl overflow-hidden">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
@@ -75,13 +73,13 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
                                 <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4"><Text code>#{r.id}</Text></td>
                                     <td className="px-6 py-4">
-                                        <Text strong>
+                                        <Text strong className="text-slate-800">
                                             {Object.entries(r).find(([k, v]) => typeof v === 'string' && !k.endsWith('_id') && k !== 'id')?.[1] as string || 'Record Details'}
                                         </Text>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <Link to={`/app/${view.target.toLowerCase()}/${r.id}`}>
-                                            <Button type="link">View</Button>
+                                            <Button type="link" className="font-semibold">View Details</Button>
                                         </Link>
                                     </td>
                                 </tr>
@@ -90,10 +88,7 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
                     </table>
                 </div>
             ) : (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={`No associated ${view.target.toLowerCase()} found.`}
-                />
+                <EmptyState message={`No associated ${view.target.toLowerCase()} found.`} />
             )}
         </div>
     );
@@ -136,16 +131,16 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
 
     return (
         <div className="py-4">
-            <Title level={4} className="mb-8">Discussion</Title>
-            <div className="flex gap-4 mb-10">
-                <Avatar size="large" icon={<UserOutlined />} style={{ backgroundColor: '#3b82f6', flexShrink: 0 }} />
+            <Title level={4} className="mb-8 font-bold">Discussion</Title>
+            <div className="flex gap-4 mb-12">
+                <Avatar size={48} icon={<UserOutlined />} className="bg-blue-600 shadow-lg shadow-blue-500/20 shrink-0" />
                 <div className="flex-1">
                     <TextArea
                         placeholder="Add a comment or internal note..."
                         autoSize={{ minRows: 3, maxRows: 6 }}
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        className="mb-3 rounded-xl border-slate-200"
+                        className="mb-4 rounded-2xl border-slate-200 p-4"
                     />
                     <div className="flex justify-end">
                         <Button
@@ -153,6 +148,7 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
                             onClick={handlePost}
                             loading={posting}
                             disabled={!newComment.trim()}
+                            size="large"
                         >
                             Post Comment
                         </Button>
@@ -160,27 +156,27 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
                 </div>
             </div>
 
-            {loading ? <Skeleton active avatar /> : (
-                <div className="space-y-8">
+            {loading ? <LoadingState /> : (
+                <div className="space-y-10">
                     {comments.map(c => (
                         <div key={c.id} className="flex gap-4">
-                            <Avatar size="large" style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}>
+                            <Avatar size={40} className="bg-slate-100 text-slate-400 font-bold shrink-0">
                                 {c.author.charAt(0)}
                             </Avatar>
                             <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Text strong>{c.author}</Text>
-                                    <Text type="secondary" className="text-[10px]">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Text strong className="text-slate-900">{c.author}</Text>
+                                    <Text type="secondary" className="text-[10px] font-medium uppercase tracking-wider opacity-60">
                                         {new Date(c.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                                     </Text>
                                 </div>
-                                <div className="bg-slate-50 p-4 rounded-xl rounded-tl-none border border-slate-100">
-                                    <Paragraph className="text-slate-600 m-0 whitespace-pre-wrap">{c.content}</Paragraph>
+                                <div className="bg-slate-50 p-5 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm shadow-slate-200/50">
+                                    <Paragraph className="text-slate-600 m-0 whitespace-pre-wrap leading-relaxed">{c.content}</Paragraph>
                                 </div>
                             </div>
                         </div>
                     ))}
-                    {comments.length === 0 && <Empty description="No comments yet." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                    {comments.length === 0 && <EmptyState message="No comments yet." />}
                 </div>
             )}
         </div>
@@ -200,28 +196,34 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
 
     return (
         <div className="py-4">
-            <Title level={4} className="mb-8">Audit Trail</Title>
-            {loading ? <Skeleton active /> : (
+            <Title level={4} className="mb-8 font-bold">Audit Trail</Title>
+            {loading ? <LoadingState /> : (
                 <Timeline
+                    className="mt-8"
                     items={logs.map(log => ({
                         color: log.action === 'create' ? 'green' : log.action === 'delete' ? 'red' : 'blue',
                         children: (
-                            <div className="pb-4">
-                                <div className="flex justify-between items-start mb-2">
+                            <div className="pb-8 pl-2">
+                                <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2">
-                                        <Text strong className="capitalize">{log.action}</Text>
-                                        <Text type="secondary" className="text-xs">by {log.actor}</Text>
+                                        <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${log.action === 'create' ? 'bg-emerald-50 text-emerald-600' :
+                                            log.action === 'delete' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'
+                                            }`}>
+                                            {log.action}
+                                        </div>
+                                        <Text type="secondary" className="text-xs font-semibold">by {log.actor}</Text>
                                     </div>
-                                    <Text type="secondary" className="text-[10px]">
+                                    <Text type="secondary" className="text-[10px] font-medium">
                                         {new Date(log.timestamp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                                     </Text>
                                 </div>
                                 {log.changes && (
-                                    <div className="bg-slate-900 rounded-lg p-3 mt-2 overflow-x-auto shadow-inner">
-                                        <pre className="text-[10px] text-emerald-400 m-0 leading-relaxed font-mono">
+                                    <div className="bg-slate-900 rounded-xl p-4 mt-2 overflow-x-auto shadow-xl border border-white/10">
+                                        <pre className="text-xs text-blue-400 m-0 leading-relaxed font-mono">
                                             {(() => {
                                                 try {
-                                                    return JSON.stringify(JSON.parse(log.changes), null, 2);
+                                                    const changes = JSON.parse(log.changes);
+                                                    return JSON.stringify(changes, null, 2);
                                                 } catch (e) {
                                                     return log.changes;
                                                 }
@@ -234,7 +236,7 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
                     }))}
                 />
             )}
-            {!loading && logs.length === 0 && <Empty description="No history found." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+            {!loading && logs.length === 0 && <EmptyState message="No history found." />}
         </div>
     );
 }
@@ -285,8 +287,8 @@ export default function RecordView() {
         }
     };
 
-    if (loading) return <Layout><div className="p-8"><Skeleton active /></div></Layout>;
-    if (!record || !definition) return <Layout><Empty className="py-20" description="Record not found" /></Layout>;
+    if (loading) return <Layout><div className="max-w-7xl mx-auto"><LoadingState /></div></Layout>;
+    if (!record || !definition) return <Layout><div className="max-w-7xl mx-auto"><EmptyState message="Record not found" /></div></Layout>;
 
     const displayName = definition?.name ?? module;
     const fields: any[] = (definition as any)?.fields ?? [];
@@ -297,20 +299,20 @@ export default function RecordView() {
             key: 'Overview',
             label: 'Overview',
             children: (
-                <div className="py-4">
+                <div className="py-6">
                     <Descriptions
                         bordered
                         column={{ xxl: 3, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-                        className="modern-descriptions"
+                        className="premium-descriptions"
                     >
                         {fields.map(field => (
                             <Descriptions.Item key={field.name} label={field.label || field.name.replace(/_/g, ' ')}>
                                 {record[field.name] === null || record[field.name] === undefined ? (
-                                    <Text type="secondary" italic>Not set</Text>
+                                    <Text type="secondary" italic className="opacity-50">Not set</Text>
                                 ) : field.type === 'Boolean' ? (
-                                    <Tag color={record[field.name] ? 'blue' : 'default'}>{record[field.name] ? 'Yes' : 'No'}</Tag>
+                                    <Tag color={record[field.name] ? 'blue' : 'default'} bordered={false} className="rounded-full px-3">{record[field.name] ? 'Yes' : 'No'}</Tag>
                                 ) : (
-                                    <Text strong>{String(record[field.name])}</Text>
+                                    <Text strong className="text-slate-800">{String(record[field.name])}</Text>
                                 )}
                             </Descriptions.Item>
                         ))}
@@ -325,7 +327,7 @@ export default function RecordView() {
                 if (view.type === 'association') return <AssociationTab view={view} record={record} module={module!} />;
                 if (view.type === 'comments') return <CommentsTab record={record} module={module!} />;
                 if (view.type === 'history') return <HistoryTab record={record} module={module!} />;
-                if (view.type === 'summary') return <div className="py-4"><Title level={4}>Summary</Title><Paragraph>Quick view of {displayName} status.</Paragraph></div>;
+                if (view.type === 'summary') return <div className="py-4"><Title level={4} className="font-bold">Summary</Title><Paragraph className="text-slate-500">Quick view of {displayName} status.</Paragraph></div>;
                 if (view.type === 'custom') {
                     const fallbackPath = `frontend_${view.name.toLowerCase().replace(/ /g, '_')}`;
                     const explicitId = view.id || fallbackPath;
@@ -335,55 +337,34 @@ export default function RecordView() {
                     if (CustomTabComponent) {
                         return (
                             <div className="py-4">
-                                <Suspense fallback={<Skeleton active />}>
+                                <Suspense fallback={<LoadingState />}>
                                     <CustomTabComponent />
                                 </Suspense>
                             </div>
                         );
                     }
-                    return <Empty description="Custom plugin component not found in registry" />;
+                    return <EmptyState message="Custom plugin component not found in registry" />;
                 }
                 return null;
             })()
         }))
-    ].filter(Boolean); // Clean any nulls that might happen
+    ].filter(Boolean);
 
 
     return (
         <Layout>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Header Section */}
-                <div className="mb-8">
-                    <Breadcrumb
-                        style={{ marginBottom: 16 }}
-                        items={[
-                            { title: <Link to="/"><HomeOutlined /></Link> },
-                            { title: <Link to={`/app/${module}`}>{displayName}</Link> },
-                            { title: `#${record.id}` },
-                        ]}
-                    />
-
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <Space align="center" size={16}>
-                            <motion.div whileHover={{ x: -4 }}>
-                                <Link to={`/app/${module}`}>
-                                    <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" className="shadow-sm" />
-                                </Link>
-                            </motion.div>
-                            <div>
-                                <Title level={2} style={{ margin: 0, fontWeight: 800 }}>
-                                    {displayName} <span className="text-slate-300 ml-2">#{record.id}</span>
-                                </Title>
-                                <Space split={<Text type="secondary">·</Text>} className="mt-1">
-                                    <Tag color="processing" bordered={false} className="rounded-full px-3">{module}</Tag>
-                                    <Text type="secondary" className="text-xs">Modified {new Date().toLocaleDateString()}</Text>
-                                </Space>
-                            </div>
-                        </Space>
-
-                        <Space>
+            <div className="max-w-7xl mx-auto">
+                <PageHeader
+                    title={`${displayName} #${record.id}`}
+                    subtitle={`Comprehensive view of ${displayName.toLowerCase()} details and relations.`}
+                    breadcrumbItems={[
+                        { title: displayName, path: `/app/${module}` },
+                        { title: `#${record.id}` },
+                    ]}
+                    extra={
+                        <Space size={12}>
                             <Link to={`/app/${module}/${record.id}/edit`}>
-                                <Button size="large" icon={<EditOutlined />} className="rounded-xl font-semibold">
+                                <Button size="large" icon={<EditOutlined />} className="font-semibold shadow-sm rounded-xl">
                                     Edit Record
                                 </Button>
                             </Link>
@@ -395,14 +376,13 @@ export default function RecordView() {
                                 cancelText="Cancel"
                                 okButtonProps={{ danger: true, loading: deleting }}
                             >
-                                <Button size="large" danger icon={<DeleteOutlined />} className="rounded-xl shadow-sm shadow-rose-100" />
+                                <Button size="large" danger icon={<DeleteOutlined />} className="shadow-sm rounded-xl" />
                             </Popconfirm>
                         </Space>
-                    </div>
-                </div>
+                    }
+                />
 
-                {/* Main Content */}
-                <Card className="premium-card" bodyStyle={{ padding: '0 24px' }}>
+                <Card className="premium-card overflow-hidden" bodyStyle={{ padding: '0 24px' }}>
                     <Tabs
                         activeKey={activeTab}
                         onChange={setActiveTab}
@@ -416,3 +396,4 @@ export default function RecordView() {
         </Layout>
     );
 }
+

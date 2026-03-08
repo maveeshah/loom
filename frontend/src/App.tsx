@@ -6,6 +6,7 @@ import UserManagement from './pages/UserManagement';
 import RoleManagement from './pages/RoleManagement';
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeConfig } from './components/ThemeConfig';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -27,39 +28,41 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <ThemeConfig>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route path="/" element={
-            <ProtectedRoute><Dashboard /></ProtectedRoute>
-          } />
+            <Route path="/" element={
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
+            } />
 
-          <Route path="/app/:module" element={
-            <ProtectedRoute><DynamicRoute type="List" /></ProtectedRoute>
-          } />
-          <Route path="/app/:module/new" element={
-            <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
-          } />
-          <Route path="/app/:module/:id" element={
-            <ProtectedRoute><DynamicRoute type="View" /></ProtectedRoute>
-          } />
-          <Route path="/app/:module/:id/edit" element={
-            <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
-          } />
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute><AdminDashboard /></ProtectedRoute>
-          } />
-          <Route path="/admin/users" element={
-            <ProtectedRoute><UserManagement /></ProtectedRoute>
-          } />
-          <Route path="/admin/roles" element={
-            <ProtectedRoute><RoleManagement /></ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            <Route path="/app/:module" element={
+              <ProtectedRoute><DynamicRoute type="List" /></ProtectedRoute>
+            } />
+            <Route path="/app/:module/new" element={
+              <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
+            } />
+            <Route path="/app/:module/:id" element={
+              <ProtectedRoute><DynamicRoute type="View" /></ProtectedRoute>
+            } />
+            <Route path="/app/:module/:id/edit" element={
+              <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
+            } />
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute><AdminDashboard /></ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute><UserManagement /></ProtectedRoute>
+            } />
+            <Route path="/admin/roles" element={
+              <ProtectedRoute><RoleManagement /></ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeConfig>
   );
 }
 

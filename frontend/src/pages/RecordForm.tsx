@@ -9,21 +9,19 @@ import {
     Card,
     Typography,
     message,
-    Breadcrumb,
     Switch,
-    Skeleton,
     Select
 } from 'antd';
 import {
-    SaveOutlined,
-    ArrowLeftOutlined,
-    HomeOutlined
+    SaveOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import Layout from '../components/Layout';
-import { api } from '../api';
+import { PageHeader } from '../components/ui/PageHeader';
+import { LoadingState } from '../components/ui/Feedback';
 
-const { Title, Text } = Typography;
+
+const { } = Typography;
 
 export default function RecordForm() {
     const { module, id } = useParams<{ module: string; id?: string }>();
@@ -108,38 +106,21 @@ export default function RecordForm() {
 
     const displayName = definition?.name ?? module;
 
-    if (loading) return <Layout><div className="p-8"><Skeleton active /></div></Layout>;
+    if (loading) return <Layout><div className="max-w-4xl mx-auto"><LoadingState /></div></Layout>;
 
     return (
         <Layout>
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <Breadcrumb
-                        style={{ marginBottom: 16 }}
-                        items={[
-                            { title: <Link to="/"><HomeOutlined /></Link> },
-                            { title: <Link to={`/app/${module}`}>{displayName}</Link> },
-                            { title: isEditing ? 'Edit' : 'New' },
-                        ]}
-                    />
+            <div className="max-w-4xl mx-auto">
+                <PageHeader
+                    title={isEditing ? `Edit ${displayName}` : `New ${displayName}`}
+                    subtitle={isEditing ? `Refining record data for #${id}` : `Initialize a new ${displayName?.toLowerCase()} entry`}
+                    breadcrumbItems={[
+                        { title: displayName, path: `/app/${module}` },
+                        { title: isEditing ? 'Edit' : 'New' },
+                    ]}
+                />
 
-                    <div className="flex items-center gap-4">
-                        <Link to={isEditing ? `/app/${module}/${id}` : `/app/${module}`}>
-                            <Button shape="circle" icon={<ArrowLeftOutlined />} size="large" className="shadow-sm" />
-                        </Link>
-                        <div>
-                            <Title level={2} style={{ margin: 0, fontWeight: 800 }}>
-                                {isEditing ? `Edit ${displayName}` : `New ${displayName}`}
-                            </Title>
-                            <Text type="secondary">
-                                {isEditing ? `Refining record data for #${id}` : `Initialize a new ${displayName?.toLowerCase()} entry`}
-                            </Text>
-                        </div>
-                    </div>
-                </div>
-
-                <Card className="premium-card" bodyStyle={{ padding: '32px' }}>
+                <Card className="premium-card" bodyStyle={{ padding: '40px' }}>
                     <Form
                         form={form}
                         layout="vertical"
@@ -148,16 +129,16 @@ export default function RecordForm() {
                         size="large"
                         className="modern-form"
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2">
                             {definition?.fields?.map((field: any) => {
                                 const isAutomatic = field.default === 'now()' || field.onupdate;
                                 if (isAutomatic) return null;
 
-                                let inputNode = <Input placeholder={`Enter ${field.label || field.name.replace(/_/g, ' ')}`} />;
+                                let inputNode = <Input placeholder={`Enter ${field.label || field.name.replace(/_/g, ' ')}`} className="rounded-xl" />;
 
                                 if (field.type === 'Select' && field.options) {
                                     inputNode = (
-                                        <Select placeholder={`Select ${field.label || field.name}`} className="w-full">
+                                        <Select placeholder={`Select ${field.label || field.name}`} className="w-full rounded-xl">
                                             {field.options.map((opt: string) => (
                                                 <Select.Option key={opt} value={opt}>{opt}</Select.Option>
                                             ))}
@@ -165,8 +146,8 @@ export default function RecordForm() {
                                     );
                                 }
 
-                                if (field.type === 'Integer') inputNode = <InputNumber className="w-full" placeholder="0" />;
-                                if (field.type === 'Float') inputNode = <InputNumber className="w-full" step="0.01" placeholder="0.00" />;
+                                if (field.type === 'Integer') inputNode = <InputNumber className="w-full rounded-xl" placeholder="0" />;
+                                if (field.type === 'Float') inputNode = <InputNumber className="w-full rounded-xl" step="0.01" placeholder="0.00" />;
                                 if (field.type === 'Boolean') return (
                                     <Form.Item
                                         key={field.name}
@@ -178,14 +159,14 @@ export default function RecordForm() {
                                         <Switch className="bg-slate-200" />
                                     </Form.Item>
                                 );
-                                if (field.type === 'Date') inputNode = <DatePicker className="w-full" />;
-                                if (field.type === 'DateTime') inputNode = <DatePicker className="w-full" showTime />;
+                                if (field.type === 'Date') inputNode = <DatePicker className="w-full rounded-xl" />;
+                                if (field.type === 'DateTime') inputNode = <DatePicker className="w-full rounded-xl" showTime />;
 
                                 return (
                                     <Form.Item
                                         key={field.name}
                                         name={field.name}
-                                        label={field.label || field.name.replace(/_/g, ' ')}
+                                        label={<span className="font-semibold text-slate-700">{field.label || field.name.replace(/_/g, ' ')}</span>}
                                         rules={[{ required: field.required, message: `${field.label || field.name} is required` }]}
                                         className={field.type === 'String' ? 'col-span-2' : 'col-span-1'}
                                     >
@@ -195,9 +176,9 @@ export default function RecordForm() {
                             })}
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 mt-10 pt-8 border-t border-slate-100">
+                        <div className="flex items-center justify-end gap-4 mt-12 pt-8 border-t border-slate-100">
                             <Link to={isEditing ? `/app/${module}/${id}` : `/app/${module}`}>
-                                <Button size="large" className="rounded-xl px-8">Cancel</Button>
+                                <Button size="large" className="rounded-xl px-8 font-medium hover:bg-slate-50">Cancel</Button>
                             </Link>
                             <Button
                                 type="primary"
@@ -205,7 +186,7 @@ export default function RecordForm() {
                                 loading={saving}
                                 size="large"
                                 icon={<SaveOutlined />}
-                                className="rounded-xl px-10 shadow-lg shadow-blue-100"
+                                className="rounded-xl px-12 font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
                             >
                                 {isEditing ? 'Save Changes' : `Create ${displayName}`}
                             </Button>
@@ -216,3 +197,4 @@ export default function RecordForm() {
         </Layout>
     );
 }
+
