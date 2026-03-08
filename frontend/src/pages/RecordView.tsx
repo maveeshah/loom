@@ -21,7 +21,6 @@ import {
     LinkOutlined,
     UserOutlined
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { pluginRegistry } from '../framework/pluginRegistry';
@@ -41,7 +40,7 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
         if (!view.target) return;
         setLoading(true);
         api.fetchRecords(view.target.toLowerCase(), { [`${module.toLowerCase()}_id`]: record.id })
-            .then(setRecords)
+            .then(res => setRecords(Array.isArray(res) ? res : res.data || []))
             .finally(() => setLoading(false));
     }, [view, record, module]);
 

@@ -36,7 +36,9 @@ export default function ModuleListView() {
         if (!module) return;
         setLoading(true);
         Promise.all([api.fetchRecords(module), api.fetchModuleDefinition(module)])
-            .then(([recs, def]) => {
+            .then(([response, def]) => {
+                // Handle both older array format and new paginated format
+                const recs = Array.isArray(response) ? response : response.data || [];
                 setRecords(recs);
                 setDefinition(def);
             })
