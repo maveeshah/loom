@@ -70,3 +70,20 @@ def register(
     db.commit()
     db.refresh(new_user)
     return {"msg": "User created successfully"}
+
+
+@router.put("/me")
+def update_me(
+    full_name: str = None,
+    password: str = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if full_name:
+        current_user.full_name = full_name
+    if password:
+        current_user.hashed_password = get_password_hash(password)
+
+    db.commit()
+    db.refresh(current_user)
+    return {"msg": "Profile updated successfully"}

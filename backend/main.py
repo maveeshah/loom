@@ -12,6 +12,7 @@ from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
 import admin_router
+import settings_router
 from plugin_registry import registry
 
 from settings import get_settings, Settings
@@ -99,8 +100,9 @@ def create_app(settings: Settings = None) -> FastAPI:
     registry.discover_plugins(settings.plugin_paths)
 
     # Include Authentication Router
-    core_router.include_router(auth_router.router)
-    core_router.include_router(admin_router.router)
+    app.include_router(auth_router.router, prefix="/v1")
+    app.include_router(admin_router.router, prefix="/v1")
+    app.include_router(settings_router.router, prefix="/v1")
 
     # Register Backend Plugin Routers
     for plugin_name, manifest in registry.plugins.items():

@@ -14,15 +14,18 @@ interface StatCardProps {
         isUp: boolean;
     };
     loading?: boolean;
+    onClick?: () => void;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, description, trend, loading }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, description, trend, loading, onClick }) => {
     return (
         <motion.div
-            whileHover={{ y: -5 }}
+            whileHover={onClick ? { y: -8, scale: 1.02 } : { y: -5 }}
             transition={{ type: 'spring', stiffness: 300 }}
+            onClick={onClick}
+            className={onClick ? 'cursor-pointer' : ''}
         >
-            <Card className="premium-card" loading={loading}>
+            <Card className={`premium-card ${onClick ? 'hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300' : ''}`} loading={loading}>
                 <div className="flex justify-between items-start mb-4">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 text-2xl">
                         {icon}

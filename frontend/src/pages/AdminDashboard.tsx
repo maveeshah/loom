@@ -9,7 +9,7 @@ import {
     CheckCircleOutlined,
     ArrowRightOutlined
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -27,6 +27,7 @@ export default function AdminDashboard() {
     });
     const [recentUsers, setRecentUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         Promise.all([
@@ -69,6 +70,7 @@ export default function AdminDashboard() {
                             title="Total Users"
                             value={stats.userCount}
                             icon={<TeamOutlined />}
+                            onClick={() => navigate('/admin/users')}
                         />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>
@@ -76,6 +78,7 @@ export default function AdminDashboard() {
                             title="Defined Roles"
                             value={stats.roleCount}
                             icon={<SafetyCertificateOutlined />}
+                            onClick={() => navigate('/admin/roles')}
                         />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>
@@ -83,6 +86,7 @@ export default function AdminDashboard() {
                             title="App Modules"
                             value={stats.moduleCount}
                             icon={<AppstoreOutlined />}
+                            onClick={() => navigate('/')}
                         />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layout as AntLayout, Menu, Button, Avatar, Space, Typography, Tooltip } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Layout as AntLayout, Menu, Button, Avatar, Space, Typography, Dropdown, Tag } from 'antd';
 import {
     DashboardOutlined,
     MenuUnfoldOutlined,
@@ -10,12 +10,15 @@ import {
     BlockOutlined,
     SettingOutlined,
     TeamOutlined,
-    SafetyCertificateOutlined
+    SafetyCertificateOutlined,
+    UserOutlined,
+    SearchOutlined
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { QuickSearch } from './ui/QuickSearch';
 
 const { Header, Sider, Content } = AntLayout;
 const { Text, Title } = Typography;
@@ -31,9 +34,21 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
     const [modules, setModules] = useState<ModuleGroup>({});
     const [collapsed, setCollapsed] = useState(false);
+    const [quickSearchVisible, setQuickSearchVisible] = useState(false);
     const { user, logout, hasPermission } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                setQuickSearchVisible(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     useEffect(() => {
         api.fetchModules().then(setModules).catch(err => {
@@ -85,6 +100,41 @@ export default function Layout({ children }: LayoutProps) {
         return [];
     };
 
+    const getPageInfo = () => {
+        const path = location.pathname;
+        if (path === '/') return { title: 'Dashboard', parent: null };
+
+        const parts = path.split('/');
+
+        if (parts[1] === 'admin') {
+            const adminTitles: Record<string, string> = {
+                'dashboard': 'Admin Dashboard',
+                'users': 'User Management',
+                'roles': 'Role Management'
+            };
+            return { title: adminTitles[parts[2]] || 'Administration', parent: 'Administration' };
+        }
+
+        if (parts[1] === 'app' && parts[2]) {
+            const slug = parts[2];
+            let moduleName = slug;
+
+            Object.values(modules).flat().forEach(m => {
+                if (m.slug === slug) moduleName = m.name;
+            });
+
+            if (parts[3] === 'new') return { title: `New ${moduleName}`, parent: moduleName };
+            if (parts[4] === 'edit') return { title: `Edit ${moduleName}`, parent: moduleName };
+            if (parts[3]) return { title: `View ${moduleName}`, parent: moduleName };
+
+            return { title: moduleName, parent: 'Modules' };
+        }
+
+        return { title: '', parent: null };
+    };
+
+    const { title: pageTitle, parent: pageParent } = getPageInfo();
+
     return (
         <AntLayout style={{ minHeight: '100vh' }}>
             <Sider
@@ -102,9 +152,11 @@ export default function Layout({ children }: LayoutProps) {
             >
                 <div className="flex flex-col h-full bg-white/50 backdrop-blur-xl">
                     <div className="p-8 pb-6 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                        <motion.div
+                            className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0 animate-float"
+                        >
                             <span className="text-white font-black text-xl tracking-tighter">V</span>
-                        </div>
+                        </motion.div>
                         {!collapsed && (
                             <Title level={4} className="!m-0 text-xl font-black tracking-tight text-slate-800">
                                 Viemed
@@ -138,7 +190,7 @@ export default function Layout({ children }: LayoutProps) {
             </Sider>
 
             <AntLayout className="bg-[#f8fafc]">
-                <Header className="px-8 bg-white/70 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between h-20">
+                <Header className="px-8 premium-glass sticky top-0 z-20 flex items-center justify-between h-20">
                     <Space size={20}>
                         {location.pathname !== '/' && (
                             <Button
@@ -148,30 +200,74 @@ export default function Layout({ children }: LayoutProps) {
                                 className="w-10 h-10 rounded-xl hover:bg-slate-100"
                             />
                         )}
-                        <Title level={5} className="!m-0 text-slate-400 font-medium">
-                            {location.pathname === '/' ? 'Dashboard' : ''}
-                        </Title>
+                        <div className="flex flex-col leading-tight">
+                            {pageParent && (
+                                <Text className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                                    {pageParent}
+                                </Text>
+                            )}
+                            <Title level={5} className="!m-0 text-slate-800 font-bold tracking-tight">
+                                {pageTitle}
+                            </Title>
+                        </div>
                     </Space>
 
+                    <div className="flex items-center gap-4">
+                        <Button
+                            icon={<SearchOutlined />}
+                            className="bg-slate-100/50 border-none hover:bg-slate-100 flex items-center gap-2 pr-4 text-slate-400 font-medium rounded-xl h-10"
+                            onClick={() => setQuickSearchVisible(true)}
+                        >
+                            <span className="hidden md:inline">Quick Search...</span>
+                            <Tag bordered={false} className="m-0 text-[10px] font-bold bg-white/50 text-slate-400">⌘K</Tag>
+                        </Button>
+                    </div>
+
                     <Space size={20}>
-                        <Tooltip title="Logout">
-                            <Button
-                                type="text"
-                                shape="circle"
-                                icon={<LogoutOutlined />}
-                                onClick={() => logout()}
-                                danger
-                                className="w-10 h-10 hover:bg-rose-50"
-                            />
-                        </Tooltip>
                         <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
-                            <Text strong className="hidden sm:block text-slate-700">{user?.full_name}</Text>
-                            <Avatar
-                                size="large"
-                                className="bg-blue-50 text-blue-600 font-bold border-2 border-white shadow-sm"
+                            <Dropdown
+                                menu={{
+                                    items: [
+                                        {
+                                            key: 'profile',
+                                            label: 'Profile Settings',
+                                            icon: <UserOutlined />,
+                                            disabled: true,
+                                        },
+                                        {
+                                            key: 'settings',
+                                            label: 'System Settings',
+                                            icon: <SettingOutlined />,
+                                            disabled: !hasPermission('*:*'),
+                                        },
+                                        {
+                                            type: 'divider',
+                                        },
+                                        {
+                                            key: 'logout',
+                                            label: 'Logout',
+                                            icon: <LogoutOutlined />,
+                                            danger: true,
+                                            onClick: () => logout(),
+                                        },
+                                    ]
+                                }}
+                                placement="bottomRight"
+                                trigger={['click']}
                             >
-                                {user?.full_name?.charAt(0)}
-                            </Avatar>
+                                <div className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-1.5 pr-3 rounded-xl transition-colors group">
+                                    <Avatar
+                                        size="large"
+                                        className="bg-blue-50 text-blue-600 font-bold border-2 border-white shadow-sm"
+                                    >
+                                        {user?.full_name?.charAt(0)}
+                                    </Avatar>
+                                    <div className="hidden sm:flex flex-col items-start leading-none">
+                                        <Text strong className="text-slate-700 text-sm group-hover:text-blue-600 transition-colors">{user?.full_name}</Text>
+                                        <Text className="text-[10px] uppercase font-bold tracking-tight text-slate-400 group-hover:text-slate-500 transition-colors">{user?.role?.name}</Text>
+                                    </div>
+                                </div>
+                            </Dropdown>
                         </div>
                     </Space>
                 </Header>
@@ -190,7 +286,11 @@ export default function Layout({ children }: LayoutProps) {
                     </AnimatePresence>
                 </Content>
             </AntLayout>
+            <QuickSearch
+                visible={quickSearchVisible}
+                onClose={() => setQuickSearchVisible(false)}
+                modules={modules}
+            />
         </AntLayout>
     );
 }
-

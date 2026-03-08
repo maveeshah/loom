@@ -150,3 +150,12 @@ class Invoice(Base):
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Float)
     status = Column(String, default="Draft")
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String)
+    group = Column(String, default="general")
+    description = Column(String)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

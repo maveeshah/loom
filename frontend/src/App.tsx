@@ -4,7 +4,10 @@ import DynamicRoute from './pages/DynamicRoute';
 import Login from './pages/Login';
 import UserManagement from './pages/UserManagement';
 import RoleManagement from './pages/RoleManagement';
+import ProfileSettings from './pages/ProfileSettings';
+import SystemSettings from './pages/SystemSettings';
 import AdminDashboard from './pages/AdminDashboard';
+import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeConfig } from './components/ThemeConfig';
 
@@ -23,7 +26,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return <Layout>{children}</Layout>;
 }
 
 function App() {
@@ -38,6 +41,10 @@ function App() {
               <ProtectedRoute><Dashboard /></ProtectedRoute>
             } />
 
+            <Route path="/profile" element={
+              <ProtectedRoute><ProfileSettings /></ProtectedRoute>
+            } />
+
             <Route path="/app/:module" element={
               <ProtectedRoute><DynamicRoute type="List" /></ProtectedRoute>
             } />
@@ -50,6 +57,7 @@ function App() {
             <Route path="/app/:module/:id/edit" element={
               <ProtectedRoute><DynamicRoute type="Form" /></ProtectedRoute>
             } />
+
             <Route path="/admin/dashboard" element={
               <ProtectedRoute><AdminDashboard /></ProtectedRoute>
             } />
@@ -58,6 +66,9 @@ function App() {
             } />
             <Route path="/admin/roles" element={
               <ProtectedRoute><RoleManagement /></ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute><SystemSettings /></ProtectedRoute>
             } />
           </Routes>
         </BrowserRouter>

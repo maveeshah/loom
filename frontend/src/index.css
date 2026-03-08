@@ -42,11 +42,15 @@
   }
 
   .premium-card:hover {
-    @apply shadow-md border-blue-200/50 -translate-y-1;
+    @apply shadow-xl shadow-blue-500/10 border-blue-200/50 -translate-y-1;
   }
 
   .glass-effect {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    @apply bg-white/60 backdrop-blur-xl border-r border-slate-200/40;
+  }
+
+  .premium-glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/40 shadow-sm shadow-slate-200/20;
   }
 
   .stat-value {
@@ -60,6 +64,24 @@
   .section-title {
     @apply text-xl font-bold text-slate-800 mb-4;
   }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
 /* Ant Design Global Overrides */

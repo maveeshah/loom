@@ -71,6 +71,8 @@ export const api = {
         localStorage.removeItem('loom_token');
         window.location.href = '/login';
     },
+    updateMe: (data: { full_name?: string; password?: string }) =>
+        request<any>('/v1/auth/me', { method: 'PUT', body: JSON.stringify(data) }),
 
     // Module registry
     fetchModules: () => request<Record<string, ModuleDefinition[]>>('/v1/modules'),
@@ -88,6 +90,11 @@ export const api = {
         request<any>(`/v1/app/${slug}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteRecord: (slug: string, id: number) =>
         request<void>(`/v1/app/${slug}/${id}`, { method: 'DELETE' }),
+
+    // Settings
+    fetchSettings: () => request<Record<string, string>>('/v1/settings'),
+    updateSetting: (key: string, value: string) =>
+        request<any>(`/v1/settings/${key}?value=${encodeURIComponent(value)}`, { method: 'PUT' }),
 
     // Admin
     admin: {
