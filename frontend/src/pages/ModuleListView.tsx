@@ -17,7 +17,6 @@ import {
     DeleteOutlined,
     SearchOutlined
 } from '@ant-design/icons';
-import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DataTable } from '../components/ui/DataTable';
@@ -154,7 +153,7 @@ export default function ModuleListView() {
     const displayName = definition?.name ?? module;
 
     return (
-        <Layout>
+        <>
             <div className="max-w-7xl mx-auto">
                 <PageHeader
                     title={displayName || ''}
@@ -185,7 +184,7 @@ export default function ModuleListView() {
                     scroll={{ x: 'max-content' }}
                 />
             </div>
-        </Layout>
+        </>
     );
 }
 

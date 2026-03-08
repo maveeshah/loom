@@ -16,7 +16,6 @@ import {
     SaveOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LoadingState } from '../components/ui/Feedback';
@@ -118,10 +117,10 @@ export default function RecordForm() {
 
     const displayName = definition?.name ?? module;
 
-    if (loading) return <Layout><div className="max-w-4xl mx-auto"><LoadingState /></div></Layout>;
+    if (loading) return <div className="max-w-4xl mx-auto"><LoadingState /></div>;
 
     return (
-        <Layout>
+        <>
             <div className="max-w-4xl mx-auto">
                 <PageHeader
                     title={isEditing ? `Edit ${displayName}` : `New ${displayName}`}
@@ -206,7 +205,7 @@ export default function RecordForm() {
                     </Form>
                 </Card>
             </div>
-        </Layout>
+        </>
     );
 }
 

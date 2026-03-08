@@ -21,8 +21,7 @@ import {
     LinkOutlined,
     UserOutlined
 } from '@ant-design/icons';
-
-import Layout from '../components/Layout';
+import dayjs from 'dayjs';
 import { api } from '../api';
 import type { ModuleDefinition } from '../api';
 import { pluginRegistry } from '../framework/pluginRegistry';
@@ -293,8 +292,8 @@ export default function RecordView() {
         }
     };
 
-    if (loading) return <Layout><div className="max-w-7xl mx-auto"><LoadingState /></div></Layout>;
-    if (!record || !definition) return <Layout><div className="max-w-7xl mx-auto"><EmptyState message="Record not found" /></div></Layout>;
+    if (loading) return <div className="max-w-7xl mx-auto"><LoadingState /></div>;
+    if (!record || !definition) return <div className="max-w-7xl mx-auto"><EmptyState message="Record not found" /></div>;
 
     const displayName = definition?.name ?? module;
     const fields: any[] = (definition as any)?.fields ?? [];
@@ -358,7 +357,7 @@ export default function RecordView() {
 
 
     return (
-        <Layout>
+        <>
             <div className="max-w-7xl mx-auto">
                 <PageHeader
                     title={`${displayName} #${record.id}`}
@@ -403,7 +402,7 @@ export default function RecordView() {
                     />
                 </Card>
             </div>
-        </Layout>
+        </>
     );
 }
 
