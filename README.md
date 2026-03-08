@@ -45,9 +45,20 @@ This command will:
 - **Restart a specific service**: `docker-compose restart backend`
 - **Run migrations manually**: `docker-compose exec backend alembic upgrade head`
 
+### Database Migrations
+
+Because the framework dynamically generates SQLAlchemy models from YAML blueprints, you **must not** rely on automatic schema updates in production.
+
+To create database migrations after modifying a YAML blueprint:
+1. Run `./make_migrations.sh` locally. This script regenerates `models.py` and runs `alembic revision --autogenerate`.
+2. Review the generated Alembic migration file under `backend/migrations/versions/`.
+3. Commit the new migration to source control.
+4. When `docker-compose up` is run, the backend container will automatically execute `alembic upgrade head`.
+
 ### Adding Your First Module
 
 1. Create `backend/blueprints/my_module.yaml`.
 2. Define the schema according to the [Blueprints Reference](docs/blueprints.md).
-3. The backend automatically manages the database and exposes generic CRUD `/v1/app/my_module`.
+3. Run `./make_migrations.sh` to update models and generate a database migration.
+4. The backend automatically manages the database and exposes generic CRUD `/v1/app/my_module`.
 4. The frontend renders `/app/my_module` dynamically without writing boilerplate React code.

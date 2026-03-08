@@ -183,6 +183,28 @@ def create_app(settings: Settings = None) -> FastAPI:
 
         raise HTTPException(status_code=404, detail=f"Module '{module_slug}' not found")
 
+    def get_scoped_query(model, db: Session, current_user: models.User):
+        """
+        Apply row-level security / data scoping to generic queries.
+        If the model has a `tenant_id` and the user is not a superadmin,
+        filter records by the user's `tenant_id`.
+        For now, as an example, if the model has a `user_id`, we might filter by user_id
+        unless they have wildcard access. Here we can implement generic row-level security.
+        """
+        query = db.query(model)
+
+        # Superadmin check
+        if "*:*" in [p.code for p in current_user.role.permissions]:
+            return query
+
+        # Example Row-Level Security:
+        # If the model has a 'tenant_id' field, enforce that it matches the user's tenant_id.
+        # Note: You'll need to add tenant_id to your User model if you use multi-tenancy.
+        if hasattr(model, 'tenant_id') and hasattr(current_user, 'tenant_id'):
+            query = query.filter(model.tenant_id == current_user.tenant_id)
+
+        return query
+
     # ─── Records CRUD ────────────────────────────────────────────────────
     @core_router.get("/app/{model_name}")
     def list_records(
@@ -193,13 +215,36 @@ def create_app(settings: Settings = None) -> FastAPI:
     ):
         check_permissions(current_user, f"{model_name.lower()}:read")
         model = get_model_by_name(model_name)
-        query = db.query(model)
+        query = get_scoped_query(model, db, current_user)
 
+        # Pagination parameters
+        limit = int(request.query_params.get("limit", 50))
+        offset = int(request.query_params.get("offset", 0))
+
+        # Restrict limit to avoid massive queries
+        limit = min(limit, 100)
+
+        # Filter out pagination params and apply exact match filtering on allowed columns
         for key, value in request.query_params.items():
-            if hasattr(model, key):
-                query = query.filter(getattr(model, key) == value)
+            if key in ("limit", "offset"):
+                continue
 
-        return [model_to_dict(r) for r in query.all()]
+            # Simple query validation: only allow filtering on actual columns (not relationships/methods)
+            if hasattr(model, key):
+                column = getattr(model, key)
+                # Ensure it's an actual SQLAlchemy instrumented attribute representing a column
+                if hasattr(column, "expression"):
+                    query = query.filter(column == value)
+
+        total = query.count()
+        records = query.offset(offset).limit(limit).all()
+
+        return {
+            "data": [model_to_dict(r) for r in records],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
     @core_router.post("/app/{model_name}", status_code=201)
     def create_record(
@@ -242,7 +287,8 @@ def create_app(settings: Settings = None) -> FastAPI:
     ):
         check_permissions(current_user, f"{model_name.lower()}:read")
         model = get_model_by_name(model_name)
-        instance = db.query(model).filter(model.id == record_id).first()
+        query = get_scoped_query(model, db, current_user)
+        instance = query.filter(model.id == record_id).first()
         if not instance:
             raise HTTPException(status_code=404, detail="Record not found")
         return model_to_dict(instance)
@@ -257,7 +303,8 @@ def create_app(settings: Settings = None) -> FastAPI:
     ):
         check_permissions(current_user, f"{model_name.lower()}:write")
         model = get_model_by_name(model_name)
-        instance = db.query(model).filter(model.id == record_id).first()
+        query = get_scoped_query(model, db, current_user)
+        instance = query.filter(model.id == record_id).first()
         if not instance:
             raise HTTPException(status_code=404, detail="Record not found")
 
@@ -302,7 +349,8 @@ def create_app(settings: Settings = None) -> FastAPI:
     ):
         check_permissions(current_user, f"{model_name.lower()}:delete")
         model = get_model_by_name(model_name)
-        instance = db.query(model).filter(model.id == record_id).first()
+        query = get_scoped_query(model, db, current_user)
+        instance = query.filter(model.id == record_id).first()
         if not instance:
             raise HTTPException(status_code=404, detail="Record not found")
 

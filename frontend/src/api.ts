@@ -81,7 +81,9 @@ export const api = {
     // Records CRUD
     fetchRecords: (slug: string, filters?: Record<string, any>) => {
         const query = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-        return request<any[]>(`/v1/app/${slug}${query}`);
+        // Note: The backend now returns { data: any[], total: number, limit: number, offset: number }
+        // We type it as any to handle both formats if needed during transition, but expect the paginated response.
+        return request<any>(`/v1/app/${slug}${query}`);
     },
     fetchRecord: (slug: string, id: number) => request<any>(`/v1/app/${slug}/${id}`),
     createRecord: (slug: string, data: Record<string, any>) =>
