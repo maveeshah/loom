@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Layout as AntLayout, Menu, Button, Avatar, Space, Typography, Dropdown, Tag } from 'antd';
 import {
@@ -230,13 +230,12 @@ export default function Layout({ children }: LayoutProps) {
                                     items: [
                                         {
                                             key: 'profile',
-                                            label: 'Profile Settings',
+                                            label: <Link to="/profile">Profile Settings</Link>,
                                             icon: <UserOutlined />,
-                                            disabled: true,
                                         },
                                         {
                                             key: 'settings',
-                                            label: 'System Settings',
+                                            label: <Link to="/admin/settings">System Settings</Link>,
                                             icon: <SettingOutlined />,
                                             disabled: !hasPermission('*:*'),
                                         },
