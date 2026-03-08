@@ -9,60 +9,14 @@ from sqlalchemy import (
     JSON,
     func,
     ForeignKey,
+    Table,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
 
-class Document(Base):
-    __tablename__ = "documents"
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    file_url = Column(String)
-    uploaded_at = Column(DateTime, default=func.now())
-    patient_id = Column(Integer, ForeignKey("patients.id"))
-    patient = relationship("Patient")
-
-
-class Note(Base):
-    __tablename__ = "notes"
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    content = Column(String)
-    is_done = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-
-class Humans(Base):
-    __tablename__ = "humans"
-    id = Column(Integer, primary_key=True, index=True)
-    first_name = Column(String)
-    last_name = Column(String)
-    email = Column(String)
-    phone = Column(String)
-    address = Column(String)
-    city = Column(String)
-    state = Column(String)
-    zip = Column(String)
-    country = Column(String)
-
-
-class AuditLog(Base):
-    __tablename__ = "auditlogs"
-    id = Column(Integer, primary_key=True, index=True)
-    model_name = Column(String)
-    record_id = Column(Integer)
-    action = Column(String)
-    changes = Column(JSON)  # Better for querying historical changes
-    actor = Column(String, default="System User")
-    timestamp = Column(DateTime, default=func.now())
-
-
-from sqlalchemy import Table
-
-# Association table for roles and permissions
+# Association table for Many-to-Many relationship between Role and Permission
 role_permissions = Table(
     "role_permissions",
     Base.metadata,
@@ -74,34 +28,22 @@ role_permissions = Table(
 class Permission(Base):
     __tablename__ = "permissions"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)  # human readable
-    code = Column(String, unique=True, index=True)  # e.g., 'patient:read'
-    module = Column(String, index=True)  # grouping
+    name = Column(String, unique=True, index=True)
+    code = Column(String, unique=True, index=True)
+    module = Column(String, index=True)
 
 
 class Role(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    permissions = relationship(
-        "Permission", secondary=role_permissions, backref="roles"
-    )
-
-
-class Encounter(Base):
-    __tablename__ = "encounters"
-    id = Column(Integer, primary_key=True, index=True)
-    encounter_date = Column(DateTime, default=func.now())
-    type = Column(String)
-    status = Column(String, default="Scheduled")
-    patient_id = Column(Integer, ForeignKey("patients.id"))
-    patient = relationship("Patient")
+    permissions = relationship("Permission", secondary=role_permissions)
 
 
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String)
+    email = Column(String, index=True)
     full_name = Column(String)
     hashed_password = Column(String)
     format = Column(String, default="standard")
@@ -112,14 +54,37 @@ class User(Base):
     role = relationship("Role")
 
 
-class Patient(Base):
-    __tablename__ = "patients"
+class AuditLog(Base):
+    __tablename__ = "auditlogs"
+    id = Column(Integer, primary_key=True, index=True)
+    model_name = Column(String)
+    record_id = Column(Integer)
+    action = Column(String)
+    changes = Column(JSON)
+    actor = Column(String, default="System User")
+    timestamp = Column(DateTime, default=func.now())
+
+
+class Employee(Base):
+    __tablename__ = "employees"
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
-    age = Column(Integer)
+    title = Column(String)
     is_active = Column(Boolean, default=True)
-    encounters = relationship("Encounter")
+    department_id = Column(Integer, ForeignKey("departments.id"))
+    department = relationship("Department", back_populates="employees")
+    companydocuments = relationship("CompanyDocument")
+
+
+class CompanyDocument(Base):
+    __tablename__ = "company_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    file_url = Column(String)
+    classification = Column(String, default="Confidential")
+    employee_id = Column(Integer, ForeignKey("employees.id"))
+    employee = relationship("Employee")
 
 
 class Comment(Base):
@@ -132,30 +97,10 @@ class Comment(Base):
     created_at = Column(DateTime, default=func.now())
 
 
-class Projects(Base):
-    __tablename__ = "projects"
+class Department(Base):
+    __tablename__ = "departments"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    description = Column(String)
-    status = Column(String)
-    start_date = Column(Date)
-    end_date = Column(Date)
     budget = Column(Float)
-    team_members = Column(JSON)
-    tasks = Column(JSON)
-
-
-class Invoice(Base):
-    __tablename__ = "invoices"
-    id = Column(Integer, primary_key=True, index=True)
-    amount = Column(Float)
-    status = Column(String, default="Draft")
-
-
-class SystemSetting(Base):
-    __tablename__ = "system_settings"
-    key = Column(String, primary_key=True, index=True)
-    value = Column(String)
-    group = Column(String, default="general")
-    description = Column(String)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+    employees = relationship("Employee", back_populates="department")

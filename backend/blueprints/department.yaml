@@ -1,0 +1,42 @@
+name: Department
+module: Organization
+description: Core grouping of employees. Showcases custom dashboard and reports.
+ui:
+  show_in_sidebar: true
+  icon: block
+  default_view: dashboard
+associations:
+- type: has_many
+  target: Employee
+  foreign_key: department_id
+views:
+- name: Dashboard
+  type: custom
+  id: DepartmentDashboard
+- name: Employees
+  type: association
+  target: Employee
+  id: association
+- name: Discussion
+  type: comments
+  id: comments
+- name: Audit Trail
+  type: history
+  id: history
+overrides:
+  frontend_DepartmentDashboard: pages/custom/DepartmentDashboard.tsx
+fields:
+- name: name
+  label: Department Name
+  type: String
+  required: true
+- name: budget
+  label: Operating Budget
+  type: Float
+- name: is_active
+  label: Is Active
+  type: Boolean
+  default: true
+slug: department
+permission_namespace: department
+table_name: departments

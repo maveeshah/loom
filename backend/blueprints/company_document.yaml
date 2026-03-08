@@ -1,0 +1,37 @@
+name: Company Document
+module: Admin
+description: Highly restricted documents. Showcases Role Permissions and linking.
+ui:
+  show_in_sidebar: true
+  icon: file
+  default_view: summary
+associations:
+- type: belongs_to
+  target: Employee
+  foreign_key: employee_id
+views:
+- name: Summary
+  type: summary
+  id: summary
+- name: Comments
+  type: comments
+  id: comments
+- name: History
+  type: history
+  id: history
+fields:
+- name: title
+  label: Document Title
+  type: String
+  required: true
+- name: file_url
+  label: File URL
+  type: String
+  required: true
+- name: classification
+  label: Security Classification
+  type: String
+  default: "Confidential"
+slug: company_document
+permission_namespace: restricted_document
+table_name: company_documents

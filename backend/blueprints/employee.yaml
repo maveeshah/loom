@@ -1,0 +1,47 @@
+name: Employee
+module: Organization
+description: Employee records. Showcases searchable list views, forms, and relations.
+ui:
+  show_in_sidebar: true
+  icon: user
+  default_view: summary
+associations:
+- type: belongs_to
+  target: Department
+  foreign_key: department_id
+- type: has_many
+  target: CompanyDocument
+  foreign_key: employee_id
+views:
+- name: Summary
+  type: summary
+  id: summary
+- name: Documents
+  type: association
+  target: CompanyDocument
+  id: documents
+- name: Comments
+  type: comments
+  id: comments
+- name: History
+  type: history
+  id: history
+fields:
+- name: first_name
+  label: First Name
+  type: String
+  required: true
+- name: last_name
+  label: Last Name
+  type: String
+  required: true
+- name: title
+  label: Job Title
+  type: String
+- name: is_active
+  label: Is Active
+  type: Boolean
+  default: true
+slug: employee
+permission_namespace: employee
+table_name: employees
