@@ -225,10 +225,13 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
                                         <pre className="text-xs text-blue-400 m-0 leading-relaxed font-mono">
                                             {(() => {
                                                 try {
-                                                    const changes = JSON.parse(log.changes);
+                                                    // Handle both old string format and new JSON object format
+                                                    const changes = typeof log.changes === 'string'
+                                                        ? JSON.parse(log.changes)
+                                                        : log.changes;
                                                     return JSON.stringify(changes, null, 2);
                                                 } catch (e) {
-                                                    return log.changes;
+                                                    return String(log.changes);
                                                 }
                                             })()}
                                         </pre>
@@ -333,10 +336,24 @@ export default function RecordView() {
                 if (view.type === 'history') return <HistoryTab record={record} module={module!} />;
                 if (view.type === 'summary') return <div className="py-4"><Title level={4} className="font-bold">Summary</Title><Paragraph className="text-slate-500">Quick view of {displayName} status.</Paragraph></div>;
                 if (view.type === 'custom') {
+                    // Try looking up by explicit ID first, then try the fallback wildcard approach from lazy loaded views
                     const fallbackPath = `frontend_${view.name.toLowerCase().replace(/ /g, '_')}`;
                     const explicitId = view.id || fallbackPath;
 
-                    const CustomTabComponent = pluginRegistry.getView(module!, 'tab', explicitId);
+                    // The generic custom components mapped by filename, so e.g. PatientAnalytics
+                    // Our blueprint in patient.yaml overrides frontend_analytics: pages/custom/PatientAnalytics.tsx
+                    // Let's parse out the filename if there's an override.
+                    const overrides = (definition as any)?.overrides || {};
+                    const customOverridePath = overrides[`frontend_${view.id}`];
+                    let fileNameId = explicitId;
+                    if (customOverridePath && customOverridePath.includes('/')) {
+                        fileNameId = customOverridePath.split('/').pop()?.replace('.tsx', '') || explicitId;
+                    }
+
+                    // Look for the specific module registration, or fallback to the wildcard
+                    const CustomTabComponent =
+                        pluginRegistry.getView(module!, 'tab', explicitId) ||
+                        pluginRegistry.getView('*', 'tab', fileNameId);
 
                     if (CustomTabComponent) {
                         return (
@@ -347,7 +364,7 @@ export default function RecordView() {
                             </div>
                         );
                     }
-                    return <EmptyState message="Custom plugin component not found in registry" />;
+                    return <EmptyState message={`Custom plugin component '${fileNameId}' not found in registry`} />;
                 }
                 return null;
             })()

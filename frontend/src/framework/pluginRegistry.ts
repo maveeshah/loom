@@ -26,17 +26,28 @@ class PluginRegistry {
 
 export const pluginRegistry = new PluginRegistry();
 
-// Eager load convention-based custom views and auto-register them as fallback
-// This facilitates incremental migration from convention to explicit config.
-const customViewsRecord = import.meta.glob('../pages/custom/*.tsx', { eager: true });
+// Lazy load convention-based custom views and auto-register them as fallback
+// This improves initial bundle size by code-splitting custom plugins.
+const customViewsRecord = import.meta.glob('../pages/custom/*.tsx');
 
 for (const path in customViewsRecord) {
-    const mod = customViewsRecord[path] as any;
-    // Expected to export default component, and optionally a pluginConfig
-    if (mod.default && mod.pluginConfig) {
+    // Extract module and ID roughly from the path for convention-based registration
+    // e.g. ../pages/custom/PatientAnalytics.tsx
+    const fileName = path.split('/').pop()?.replace('.tsx', '');
+
+    if (fileName) {
+        // We use React.lazy to dynamically import the component when it's rendered
+        const LazyComponent = React.lazy(customViewsRecord[path] as any);
+
+        // This is a naive registration based on file name.
+        // In a real system, you might fetch a plugin manifest or rely on explicit registry calls.
+        // We'll register it under a generic ID based on the filename for demonstration.
+        // It's expected that blueprints using these components will specify id: "PatientAnalytics"
         pluginRegistry.registerView({
-            ...mod.pluginConfig,
-            component: mod.default,
+            module: '*', // Wilcard module or try to infer
+            surface: 'tab',
+            id: fileName,
+            component: LazyComponent,
         });
     }
 }
