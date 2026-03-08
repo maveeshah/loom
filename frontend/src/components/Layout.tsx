@@ -122,15 +122,7 @@ export default function Layout({ children }: LayoutProps) {
 
                     <div className="p-6 border-t border-slate-100">
                         <div className="flex flex-col gap-4">
-                            {!collapsed && (
-                                <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-100">
-                                    <Avatar size="large" className="bg-blue-600 shadow-sm">{user?.full_name?.charAt(0)}</Avatar>
-                                    <div className="flex-1 min-w-0">
-                                        <Text strong className="block text-sm truncate text-slate-900">{user?.full_name}</Text>
-                                        <Text type="secondary" className="block text-xs truncate font-medium uppercase tracking-wider opacity-60">{user?.role?.name}</Text>
-                                    </div>
-                                </div>
-                            )}
+
                             <Button
                                 type="text"
                                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
