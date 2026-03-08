@@ -9,17 +9,27 @@ def seed_data():
         # 1. Create Admin Role
         admin_role = db.query(models.Role).filter(models.Role.name == "Admin").first()
         if not admin_role:
-            admin_role = models.Role(
-                name="Admin",
-                permissions=["*:*"],  # Wildcard for all permissions
-            )
+            admin_role = models.Role(name="Admin")
             db.add(admin_role)
             db.commit()
             db.refresh(admin_role)
             print("Created Admin role.")
 
+        # Sync Admin permissions
+        all_perms = db.query(models.Permission).all()
+        if not all_perms:
+            # If permissions don't exist, we might need to run rbac_setup first
+            # But for now let's assume they are there or we will run it later
+            pass
+        else:
+            admin_role.permissions = all_perms
+            db.commit()
+            print("Assigned all permissions to Admin role.")
+
         # 2. Create Default Admin User
-        admin_user = db.query(models.User).filter(models.User.email == "admin@loom.com").first()
+        admin_user = (
+            db.query(models.User).filter(models.User.email == "admin@loom.com").first()
+        )
         if not admin_user:
             admin_user = models.User(
                 email="admin@loom.com",
@@ -35,29 +45,39 @@ def seed_data():
             print("Admin user already exists.")
 
         # 3. Create a Standard User Role (Restricted Access)
-        user_role = db.query(models.Role).filter(models.Role.name == "Standard User").first()
+        user_role = (
+            db.query(models.Role).filter(models.Role.name == "Standard User").first()
+        )
         if not user_role:
-            user_role = models.Role(
-                name="Standard User",
-                permissions=[
-                    # User CAN read and edit departments and employees
-                    "department:read",
-                    "department:write",
-                    "employee:read",
-                    "employee:write",
-                    "comment:read",
-                    "comment:write",
-                    "auditlog:read",
-                    # User CANNOT read or write restricted_document (Company Document)
-                ],
-            )
+            user_role = models.Role(name="Standard User")
             db.add(user_role)
             db.commit()
             db.refresh(user_role)
-            print("Created Standard User role (no document access).")
+            print("Created Standard User role.")
+
+        # Sync Standard User permissions
+        perm_codes = [
+            "department:read",
+            "department:write",
+            "employee:read",
+            "employee:write",
+            "comment:read",
+            "comment:write",
+            "auditlog:read",
+        ]
+        perms = (
+            db.query(models.Permission)
+            .filter(models.Permission.code.in_(perm_codes))
+            .all()
+        )
+        user_role.permissions = perms
+        db.commit()
+        print(f"Assigned {len(perms)} permissions to Standard User role.")
 
         # 4. Create Standard User
-        standard_user = db.query(models.User).filter(models.User.email == "user@loom.com").first()
+        standard_user = (
+            db.query(models.User).filter(models.User.email == "user@loom.com").first()
+        )
         if not standard_user:
             standard_user = models.User(
                 email="user@loom.com",
@@ -74,9 +94,7 @@ def seed_data():
         department = db.query(models.Department).first()
         if not department:
             department = models.Department(
-                name="Engineering",
-                budget=1500000.00,
-                is_active=True
+                name="Engineering", budget=1500000.00, is_active=True
             )
             db.add(department)
             db.commit()
@@ -89,14 +107,14 @@ def seed_data():
                 last_name="Johnson",
                 title="Senior Software Engineer",
                 department_id=department.id,
-                is_active=True
+                is_active=True,
             )
             emp2 = models.Employee(
                 first_name="Bob",
                 last_name="Williams",
                 title="Product Manager",
                 department_id=department.id,
-                is_active=True
+                is_active=True,
             )
             db.add_all([emp1, emp2])
             db.commit()
@@ -108,21 +126,23 @@ def seed_data():
                 title="Performance Review 2024",
                 file_url="https://intranet.loom.com/docs/pr-2024.pdf",
                 classification="Highly Confidential",
-                employee_id=emp1.id
+                employee_id=emp1.id,
             )
             db.add(doc)
             db.commit()
             print("Created Restricted Company Document linked to Employee.")
 
             # Create an AuditLog to showcase the History Tab and JSON logs
-            import json
             audit_log = models.AuditLog(
                 model_name="Employee",
                 record_id=emp1.id,
                 action="Updated",
-                # Note: SQLite JSON columns often still require a JSON string dump in SQLAlchemy
-                # depending on the dialect config, so we dump it to be safe for local SQLite testing
-                changes=json.dumps({"title": {"old": "Software Engineer", "new": "Senior Software Engineer"}}),
+                changes={
+                    "title": {
+                        "old": "Software Engineer",
+                        "new": "Senior Software Engineer",
+                    }
+                },
                 actor="System Administrator",
             )
             db.add(audit_log)
@@ -142,6 +162,7 @@ def seed_data():
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         print(f"Error seeding data: {e}")
     finally:

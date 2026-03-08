@@ -7,7 +7,6 @@ import glob
 import yaml
 import inspect
 import importlib
-import json
 from datetime import datetime
 from auth_utils import get_current_user, check_permissions
 import auth_router
@@ -18,6 +17,24 @@ import settings_router
 from plugin_registry import registry
 
 from settings import get_settings, Settings
+
+
+# Global mapping for blueprints data to help resolve namespaces and models
+blueprint_registry: Dict[str, dict] = {}
+
+
+def load_blueprint_registry(settings: Settings):
+    """Load all blueprints into a global registry for lookup by slug."""
+    global blueprint_registry
+    blueprint_registry.clear()
+    for root in settings.blueprint_paths:
+        pattern = f"{root.rstrip('/')}" + "/*.yaml"
+        for bp_path in glob.glob(pattern):
+            with open(bp_path, "r") as f:
+                bp = yaml.safe_load(f) or {}
+                slug = bp.get("slug")
+                if slug:
+                    blueprint_registry[slug.lower()] = bp
 
 
 def get_model_by_name(name: str):
@@ -55,7 +72,9 @@ def load_blueprints(settings: Settings) -> list[dict]:
     return blueprints
 
 
-def create_pydantic_model_from_blueprint(blueprint: dict, is_update: bool = False) -> type[BaseModel]:
+def create_pydantic_model_from_blueprint(
+    blueprint: dict, is_update: bool = False
+) -> type[BaseModel]:
     """
     Dynamically generate a Pydantic model for validation and OpenAPI docs based on a YAML blueprint.
     If `is_update` is True, all fields become optional (like a PATCH operation).
@@ -71,7 +90,7 @@ def create_pydantic_model_from_blueprint(blueprint: dict, is_update: bool = Fals
         "Boolean": bool,
         "JSON": Dict[str, Any],
         "DateTime": datetime,
-        "Date": datetime, # Simple approximation for date
+        "Date": datetime,  # Simple approximation for date
     }
 
     model_fields = {}
@@ -96,7 +115,7 @@ def create_pydantic_model_from_blueprint(blueprint: dict, is_update: bool = Fals
             else:
                 default_val = field.get("default", None)
                 if default_val == "now()":
-                    default_val = None # We let the DB handle it
+                    default_val = None  # We let the DB handle it
                 model_fields[f_name] = (Optional[py_type], default_val)
 
     # Add foreign keys dynamically
@@ -129,7 +148,7 @@ def log_audit(
             model_name=model_name,
             record_id=record_id,
             action=action,
-            changes=changes, # Now passing dict directly as the column is JSON
+            changes=changes,  # Now passing dict directly as the column is JSON
             actor=actor,
             timestamp=datetime.utcnow(),
         )
@@ -143,6 +162,9 @@ def create_app(settings: Settings = None) -> FastAPI:
         settings = get_settings()
 
     app = FastAPI(title=settings.app_title)
+
+    # Initialize blueprint registry
+    load_blueprint_registry(settings)
 
     # Configure CORS using central settings
     app.add_middleware(
@@ -259,7 +281,7 @@ def create_app(settings: Settings = None) -> FastAPI:
         # Example Row-Level Security:
         # If the model has a 'tenant_id' field, enforce that it matches the user's tenant_id.
         # Note: You'll need to add tenant_id to your User model if you use multi-tenancy.
-        if hasattr(model, 'tenant_id') and hasattr(current_user, 'tenant_id'):
+        if hasattr(model, "tenant_id") and hasattr(current_user, "tenant_id"):
             query = query.filter(model.tenant_id == current_user.tenant_id)
 
         return query
@@ -279,20 +301,26 @@ def create_app(settings: Settings = None) -> FastAPI:
         CreateSchema = create_pydantic_model_from_blueprint(bp, is_update=False)
         UpdateSchema = create_pydantic_model_from_blueprint(bp, is_update=True)
 
-        def create_route_handler(m_name=model_name, schema=CreateSchema):
+        def create_route_handler(
+            m_name=model_name, slug_str=slug, schema_in=CreateSchema
+        ):
             def route_handler(
-                data: schema,
+                data: schema_in,
                 db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user),
             ):
-                check_permissions(current_user, f"{m_name.lower()}:write")
+                bp = blueprint_registry.get(slug_str.lower(), {})
+                ns = bp.get("permission_namespace", slug_str).lower()
+                check_permissions(current_user, f"{ns}:create")
                 model = get_model_by_name(m_name)
 
                 # Convert the validated Pydantic model to a dict, excluding unset fields
                 data_dict = data.dict(exclude_unset=True)
 
                 # PRE HOOK
-                registry.hooks.execute(m_name, "before_create", data_dict, current_user, db)
+                registry.hooks.execute(
+                    m_name, "before_create", data_dict, current_user, db
+                )
 
                 instance = model(**data_dict)
                 db.add(instance)
@@ -300,7 +328,9 @@ def create_app(settings: Settings = None) -> FastAPI:
                 db.refresh(instance)
 
                 # POST HOOK
-                registry.hooks.execute(m_name, "after_create", instance, current_user, db)
+                registry.hooks.execute(
+                    m_name, "after_create", instance, current_user, db
+                )
 
                 if settings.enable_audit:
                     log_audit(
@@ -312,16 +342,21 @@ def create_app(settings: Settings = None) -> FastAPI:
                         actor=current_user.full_name,
                     )
                 return model_to_dict(instance)
+
             return route_handler
 
-        def update_route_handler(m_name=model_name, schema=UpdateSchema):
+        def update_route_handler(
+            m_name=model_name, slug_str=slug, schema_in=UpdateSchema
+        ):
             def route_handler(
                 record_id: int,
-                data: schema,
+                data: schema_in,
                 db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user),
             ):
-                check_permissions(current_user, f"{m_name.lower()}:write")
+                bp = blueprint_registry.get(slug_str.lower(), {})
+                ns = bp.get("permission_namespace", slug_str).lower()
+                check_permissions(current_user, f"{ns}:update")
                 model = get_model_by_name(m_name)
                 query = get_scoped_query(model, db, current_user)
                 instance = query.filter(model.id == record_id).first()
@@ -331,7 +366,9 @@ def create_app(settings: Settings = None) -> FastAPI:
                 data_dict = data.dict(exclude_unset=True)
 
                 # PRE HOOK
-                registry.hooks.execute(m_name, "before_update", instance, data_dict, current_user, db)
+                registry.hooks.execute(
+                    m_name, "before_update", instance, data_dict, current_user, db
+                )
 
                 changes = {}
                 for key, value in data_dict.items():
@@ -345,7 +382,9 @@ def create_app(settings: Settings = None) -> FastAPI:
                 db.refresh(instance)
 
                 # POST HOOK
-                registry.hooks.execute(m_name, "after_update", instance, changes, current_user, db)
+                registry.hooks.execute(
+                    m_name, "after_update", instance, changes, current_user, db
+                )
 
                 if changes and settings.enable_audit:
                     log_audit(
@@ -357,6 +396,7 @@ def create_app(settings: Settings = None) -> FastAPI:
                         actor=current_user.full_name,
                     )
                 return model_to_dict(instance)
+
             return route_handler
 
         # Add explicit typed routes for this specific model slug
@@ -366,8 +406,8 @@ def create_app(settings: Settings = None) -> FastAPI:
             create_route_handler(),
             methods=["POST"],
             status_code=201,
-            response_model=None, # generic dict returned
-            tags=[bp_name]
+            response_model=None,  # generic dict returned
+            tags=[bp_name],
         )
 
         core_router.add_api_route(
@@ -375,7 +415,7 @@ def create_app(settings: Settings = None) -> FastAPI:
             update_route_handler(),
             methods=["PUT"],
             response_model=None,
-            tags=[bp_name]
+            tags=[bp_name],
         )
 
     # ─── Generic Fallback GET / DELETE ─────────────────────────────────────────
@@ -388,8 +428,13 @@ def create_app(settings: Settings = None) -> FastAPI:
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        check_permissions(current_user, f"{model_name.lower()}:read")
-        model = get_model_by_name(model_name)
+        bp = blueprint_registry.get(model_name.lower(), {})
+        ns = bp.get("permission_namespace", model_name).lower()
+        check_permissions(current_user, f"{ns}:read")
+
+        # Try to resolve model using table_name first if available, then by name
+        resolved_model_name = bp.get("name", model_name).replace(" ", "")
+        model = get_model_by_name(resolved_model_name)
         query = get_scoped_query(model, db, current_user)
 
         # Pagination parameters
@@ -421,7 +466,6 @@ def create_app(settings: Settings = None) -> FastAPI:
             "offset": offset,
         }
 
-
     @core_router.get("/app/{model_name}/{record_id}")
     def get_record(
         model_name: str,
@@ -429,14 +473,17 @@ def create_app(settings: Settings = None) -> FastAPI:
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        check_permissions(current_user, f"{model_name.lower()}:read")
-        model = get_model_by_name(model_name)
+        bp = blueprint_registry.get(model_name.lower(), {})
+        ns = bp.get("permission_namespace", model_name).lower()
+        check_permissions(current_user, f"{ns}:read")
+
+        resolved_model_name = bp.get("name", model_name).replace(" ", "")
+        model = get_model_by_name(resolved_model_name)
         query = get_scoped_query(model, db, current_user)
         instance = query.filter(model.id == record_id).first()
         if not instance:
             raise HTTPException(status_code=404, detail="Record not found")
         return model_to_dict(instance)
-
 
     @core_router.delete("/app/{model_name}/{record_id}", status_code=204)
     def delete_record(
@@ -445,8 +492,12 @@ def create_app(settings: Settings = None) -> FastAPI:
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        check_permissions(current_user, f"{model_name.lower()}:delete")
-        model = get_model_by_name(model_name)
+        bp = blueprint_registry.get(model_name.lower(), {})
+        ns = bp.get("permission_namespace", model_name).lower()
+        check_permissions(current_user, f"{ns}:delete")
+
+        resolved_model_name = bp.get("name", model_name).replace(" ", "")
+        model = get_model_by_name(resolved_model_name)
         query = get_scoped_query(model, db, current_user)
         instance = query.filter(model.id == record_id).first()
         if not instance:

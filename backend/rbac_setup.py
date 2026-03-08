@@ -75,6 +75,7 @@ def setup_rbac():
     # 3. Create Default Roles
     roles_config = [
         {"name": "Administrator", "perm_codes": ["*:*"]},
+        {"name": "Admin", "perm_codes": ["*:*"]},
         {
             "name": "Standard User",
             "perm_codes": [
@@ -84,6 +85,9 @@ def setup_rbac():
                 "notes:read",
                 "humans:read",
                 "real life:read",
+                "employee:read",
+                "department:read",
+                "comment:read",
             ],
         },
     ]
