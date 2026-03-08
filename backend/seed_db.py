@@ -19,9 +19,7 @@ def seed_data():
             print("Created Admin role.")
 
         # 2. Create Default Admin User
-        admin_user = (
-            db.query(models.User).filter(models.User.email == "admin@loom.com").first()
-        )
+        admin_user = db.query(models.User).filter(models.User.email == "admin@loom.com").first()
         if not admin_user:
             admin_user = models.User(
                 email="admin@loom.com",
@@ -36,103 +34,115 @@ def seed_data():
         else:
             print("Admin user already exists.")
 
-        # 3. Create a Demo Doctor Role
-        doctor_role = db.query(models.Role).filter(models.Role.name == "Doctor").first()
-        if not doctor_role:
-            doctor_role = models.Role(
-                name="Doctor",
+        # 3. Create a Standard User Role (Restricted Access)
+        user_role = db.query(models.Role).filter(models.Role.name == "Standard User").first()
+        if not user_role:
+            user_role = models.Role(
+                name="Standard User",
                 permissions=[
-                    "patient:read",
-                    "patient:write",
-                    "encounter:read",
-                    "encounter:write",
+                    # User CAN read and edit departments and employees
+                    "department:read",
+                    "department:write",
+                    "employee:read",
+                    "employee:write",
                     "comment:read",
                     "comment:write",
                     "auditlog:read",
+                    # User CANNOT read or write restricted_document (Company Document)
                 ],
             )
-            db.add(doctor_role)
+            db.add(user_role)
             db.commit()
-            print("Created Doctor role.")
+            db.refresh(user_role)
+            print("Created Standard User role (no document access).")
 
-        # 4. Create Demo Patient, Encounter, and Documents
-        patient = db.query(models.Patient).first()
-        if not patient:
-            patient = models.Patient(
-                first_name="Jane",
-                last_name="Doe",
-                age=45,
+        # 4. Create Standard User
+        standard_user = db.query(models.User).filter(models.User.email == "user@loom.com").first()
+        if not standard_user:
+            standard_user = models.User(
+                email="user@loom.com",
+                full_name="Jane Smith",
+                hashed_password=get_password_hash("user123"),
+                role_id=user_role.id,
+                is_active=True,
+            )
+            db.add(standard_user)
+            db.commit()
+            print("Created Standard user: user@loom.com / user123")
+
+        # 5. Create Demo Department (Showcase Custom Dashboard)
+        department = db.query(models.Department).first()
+        if not department:
+            department = models.Department(
+                name="Engineering",
+                budget=1500000.00,
                 is_active=True
             )
-            db.add(patient)
+            db.add(department)
             db.commit()
-            db.refresh(patient)
-            print(f"Created Patient: {patient.first_name} {patient.last_name}")
+            db.refresh(department)
+            print(f"Created Department: {department.name}")
 
-            # Create an Encounter associated with the patient
-            encounter = models.Encounter(
-                type="Follow-up",
-                status="Completed",
-                patient_id=patient.id
+            # Create Employees (Showcase Searchable List and Forms)
+            emp1 = models.Employee(
+                first_name="Alice",
+                last_name="Johnson",
+                title="Senior Software Engineer",
+                department_id=department.id,
+                is_active=True
             )
-            db.add(encounter)
-            db.commit()
-            print("Created Encounter for Patient.")
-
-            # Create a Document associated with the patient
-            document = models.Document(
-                title="Lab Results",
-                file_url="https://example.com/labs.pdf",
-                patient_id=patient.id
+            emp2 = models.Employee(
+                first_name="Bob",
+                last_name="Williams",
+                title="Product Manager",
+                department_id=department.id,
+                is_active=True
             )
-            db.add(document)
+            db.add_all([emp1, emp2])
             db.commit()
-            print("Created Document for Patient.")
+            db.refresh(emp1)
+            print("Created Employees for Department.")
 
-            # Create an AuditLog to showcase the History Tab
+            # Create a Restricted Company Document (Showcase Role Management and Linking)
+            doc = models.CompanyDocument(
+                title="Performance Review 2024",
+                file_url="https://intranet.loom.com/docs/pr-2024.pdf",
+                classification="Highly Confidential",
+                employee_id=emp1.id
+            )
+            db.add(doc)
+            db.commit()
+            print("Created Restricted Company Document linked to Employee.")
+
+            # Create an AuditLog to showcase the History Tab and JSON logs
+            import json
             audit_log = models.AuditLog(
-                model_name="Patient",
-                record_id=patient.id,
+                model_name="Employee",
+                record_id=emp1.id,
                 action="Updated",
-                changes={"age": {"old": 44, "new": 45}},
+                # Note: SQLite JSON columns often still require a JSON string dump in SQLAlchemy
+                # depending on the dialect config, so we dump it to be safe for local SQLite testing
+                changes=json.dumps({"title": {"old": "Software Engineer", "new": "Senior Software Engineer"}}),
                 actor="System Administrator",
             )
             db.add(audit_log)
             db.commit()
-            print("Created Audit Log for Patient.")
+            print("Created Audit Log for Employee.")
 
             # Create a Comment to showcase the Comments Tab
             comment = models.Comment(
-                model_name="Patient",
-                record_id=patient.id,
-                content="Patient reported feeling much better after the new medication regimen.",
+                model_name="Department",
+                record_id=department.id,
+                content="Notice the custom React component above! This is injected by the plugin system.",
                 author="System Administrator",
             )
             db.add(comment)
             db.commit()
-            print("Created Comment for Patient.")
-
-        # 5. Create other generic records
-        invoice = db.query(models.Invoice).first()
-        if not invoice:
-            invoice = models.Invoice(amount=150.00, status="Paid")
-            db.add(invoice)
-            db.commit()
-            print("Created Demo Invoice.")
-
-        project = db.query(models.Projects).first()
-        if not project:
-            project = models.Projects(
-                name="Loom Platform Rollout",
-                description="Deployment of the internal framework to all departments.",
-                status="In Progress",
-                budget=50000.00
-            )
-            db.add(project)
-            db.commit()
-            print("Created Demo Project.")
+            print("Created Comment for Department.")
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error seeding data: {e}")
     finally:
         db.close()
