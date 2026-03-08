@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Typography, Breadcrumb, List, Avatar, Tag } from 'antd';
+import { Row, Col, Card, Typography, List, Avatar, Tag, Space } from 'antd';
 import {
     DashboardOutlined,
     TeamOutlined,
     SafetyCertificateOutlined,
     AppstoreOutlined,
-    HomeOutlined,
     UserOutlined,
-    CheckCircleOutlined
+    CheckCircleOutlined,
+    ArrowRightOutlined
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../api';
+import { PageHeader } from '../components/ui/PageHeader';
+import { StatCard } from '../components/ui/StatCard';
+import { LoadingState } from '../components/ui/Feedback';
 
-const { Title, Text } = Typography;
+const { } = Typography;
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState({
@@ -46,109 +49,111 @@ export default function AdminDashboard() {
         });
     }, []);
 
+    if (loading) return <Layout><div className="max-w-7xl mx-auto"><LoadingState /></div></Layout>;
+
     return (
         <Layout>
             <div className="max-w-7xl mx-auto">
-                <div className="mb-8">
-                    <Breadcrumb
-                        style={{ marginBottom: 16 }}
-                        items={[
-                            { title: <Link to="/"><HomeOutlined /></Link> },
-                            { title: 'Administration' },
-                            { title: 'Dashboard' },
-                        ]}
-                    />
-                    <Title level={2} style={{ margin: 0, fontWeight: 800 }}>Admin Dashboard</Title>
-                    <Text type="secondary">System overview and administrative controls.</Text>
-                </div>
+                <PageHeader
+                    title="Admin Dashboard"
+                    subtitle="System overview and administrative controls."
+                    breadcrumbItems={[
+                        { title: 'Administration' },
+                        { title: 'Dashboard' },
+                    ]}
+                />
 
-                <Row gutter={[24, 24]} className="mb-8">
+                <Row gutter={[24, 24]} className="mb-12">
                     <Col xs={24} sm={12} lg={6}>
-                        <Card className="premium-card">
-                            <Statistic
-                                title="Total Users"
-                                value={stats.userCount}
-                                prefix={<TeamOutlined className="text-blue-500 mr-2" />}
-                                loading={loading}
-                            />
-                        </Card>
+                        <StatCard
+                            title="Total Users"
+                            value={stats.userCount}
+                            icon={<TeamOutlined />}
+                        />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>
-                        <Card className="premium-card">
-                            <Statistic
-                                title="Defined Roles"
-                                value={stats.roleCount}
-                                prefix={<SafetyCertificateOutlined className="text-purple-500 mr-2" />}
-                                loading={loading}
-                            />
-                        </Card>
+                        <StatCard
+                            title="Defined Roles"
+                            value={stats.roleCount}
+                            icon={<SafetyCertificateOutlined />}
+                        />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>
-                        <Card className="premium-card">
-                            <Statistic
-                                title="App Modules"
-                                value={stats.moduleCount}
-                                prefix={<AppstoreOutlined className="text-emerald-500 mr-2" />}
-                                loading={loading}
-                            />
-                        </Card>
+                        <StatCard
+                            title="App Modules"
+                            value={stats.moduleCount}
+                            icon={<AppstoreOutlined />}
+                        />
                     </Col>
                     <Col xs={24} sm={12} lg={6}>
-                        <Card className="premium-card">
-                            <Statistic
-                                title="Permissions"
-                                value={stats.permCount}
-                                prefix={<DashboardOutlined className="text-orange-500 mr-2" />}
-                                loading={loading}
-                            />
-                        </Card>
+                        <StatCard
+                            title="Permissions"
+                            value={stats.permCount}
+                            icon={<DashboardOutlined />}
+                        />
                     </Col>
                 </Row>
 
-                <Row gutter={[24, 24]}>
+                <Row gutter={[32, 32]}>
                     <Col xs={24} lg={12}>
-                        <Card title="Quick Actions" className="premium-card h-full">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card
+                            title={<span className="font-bold text-slate-800">Quick Management</span>}
+                            className="premium-card h-full"
+                            bodyStyle={{ padding: '24px' }}
+                        >
+                            <div className="space-y-4">
                                 <Link to="/admin/users">
-                                    <div className="p-4 rounded-2xl bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-100 flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm">
-                                            <TeamOutlined />
+                                    <div className="p-5 rounded-2xl bg-blue-50/50 hover:bg-blue-50 transition-all cursor-pointer border border-blue-100/50 group flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm border border-blue-50">
+                                                <TeamOutlined style={{ fontSize: '20px' }} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800">User Directory</div>
+                                                <div className="text-xs text-slate-500">Manage access and account status</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-blue-900 text-sm">Manage Users</div>
-                                            <div className="text-[10px] text-blue-600 font-medium">ASSIGN ROLES & ACCESS</div>
-                                        </div>
+                                        <ArrowRightOutlined className="text-blue-300 group-hover:text-blue-500 transition-colors" />
                                     </div>
                                 </Link>
                                 <Link to="/admin/roles">
-                                    <div className="p-4 rounded-2xl bg-purple-50 hover:bg-purple-100 transition-colors cursor-pointer border border-purple-100 flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-purple-600 shadow-sm">
-                                            <SafetyCertificateOutlined />
+                                    <div className="p-5 rounded-2xl bg-purple-50/50 hover:bg-purple-50 transition-all cursor-pointer border border-purple-100/50 group flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-purple-600 shadow-sm border border-purple-50">
+                                                <SafetyCertificateOutlined style={{ fontSize: '20px' }} />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800">Role & RBAC</div>
+                                                <div className="text-xs text-slate-500">Fine-tune module-level permissions</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-purple-900 text-sm">Manage Roles</div>
-                                            <div className="text-[10px] text-purple-600 font-medium">FINE-TUNE RBAC</div>
-                                        </div>
+                                        <ArrowRightOutlined className="text-purple-300 group-hover:text-purple-500 transition-colors" />
                                     </div>
                                 </Link>
                             </div>
                         </Card>
                     </Col>
                     <Col xs={24} lg={12}>
-                        <Card title="Recently Joined Users" className="premium-card h-full">
+                        <Card
+                            title={<span className="font-bold text-slate-800">Recent Users</span>}
+                            className="premium-card h-full"
+                        >
                             <List
-                                loading={loading}
                                 itemLayout="horizontal"
                                 dataSource={recentUsers}
                                 renderItem={user => (
-                                    <List.Item>
+                                    <List.Item className="px-0">
                                         <List.Item.Meta
                                             avatar={<Avatar icon={<UserOutlined />} className="bg-slate-100 text-slate-400" />}
-                                            title={user.full_name}
-                                            description={user.email}
+                                            title={<span className="font-semibold text-slate-800">{user.full_name}</span>}
+                                            description={<span className="text-xs">{user.email}</span>}
                                         />
-                                        <Tag color="blue">{user.role?.name || 'No Role'}</Tag>
-                                        {user.is_active && <CheckCircleOutlined className="text-emerald-500 ml-2" />}
+                                        <Space>
+                                            <Tag color="blue" bordered={false} className="rounded-full px-3 text-[10px] uppercase font-bold tracking-tight">
+                                                {user.role?.name || 'No Role'}
+                                            </Tag>
+                                            {user.is_active && <CheckCircleOutlined className="text-emerald-500" />}
+                                        </Space>
                                     </List.Item>
                                 )}
                             />

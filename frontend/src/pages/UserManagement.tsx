@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Table, Card, Typography, Select, message, Tag, Space, Breadcrumb, Button, Modal, Form, Input, Switch } from 'antd';
-import { UserOutlined, HomeOutlined, CheckCircleOutlined, CloseCircleOutlined, EditOutlined, LockOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Card, Typography, Select, message, Tag, Space, Button, Modal, Form, Input, Switch, Avatar } from 'antd';
+import { UserOutlined, CheckCircleOutlined, CloseCircleOutlined, EditOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import Layout from '../components/Layout';
 import { api } from '../api';
+import { PageHeader } from '../components/ui/PageHeader';
+import { DataTable } from '../components/ui/DataTable';
+import { LoadingState } from '../components/ui/Feedback';
 
-const { Title, Text } = Typography;
+const { } = Typography;
 
 export default function UserManagement() {
     const [users, setUsers] = useState<any[]>([]);
@@ -65,37 +67,39 @@ export default function UserManagement() {
 
     const columns = [
         {
-            title: 'User',
+            title: 'User Profile',
             key: 'user',
             render: (_: any, record: any) => (
-                <Space>
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                        <UserOutlined />
-                    </div>
+                <Space size="middle">
+                    <Avatar
+                        size={40}
+                        icon={<UserOutlined />}
+                        className="bg-blue-50 text-blue-500 border border-blue-100 shadow-sm"
+                    />
                     <div>
-                        <div className="font-bold text-slate-800">{record.full_name}</div>
-                        <div className="text-xs text-slate-400">{record.email}</div>
+                        <div className="font-bold text-slate-800 leading-tight">{record.full_name}</div>
+                        <div className="text-[11px] text-slate-400 font-medium">{record.email}</div>
                     </div>
                 </Space>
             ),
         },
         {
-            title: 'Status',
+            title: 'System Role',
+            key: 'role',
+            render: (_: any, record: any) => (
+                <Tag color="geekblue" bordered={false} className="rounded-full px-3 font-semibold text-[10px] uppercase tracking-wider">
+                    {record.role?.name || 'No Role'}
+                </Tag>
+            ),
+        },
+        {
+            title: 'Account Status',
             dataIndex: 'is_active',
             key: 'status',
             render: (active: boolean) => (
                 active ?
-                    <Tag icon={<CheckCircleOutlined />} color="success" className="rounded-full px-3">Active</Tag> :
-                    <Tag icon={<CloseCircleOutlined />} color="error" className="rounded-full px-3">Inactive</Tag>
-            ),
-        },
-        {
-            title: 'Role',
-            key: 'role',
-            render: (_: any, record: any) => (
-                <Tag color="blue" className="rounded-full px-3 font-medium">
-                    {record.role?.name || 'No Role'}
-                </Tag>
+                    <Tag icon={<CheckCircleOutlined />} color="success" bordered={false} className="rounded-full px-3 font-medium">Active</Tag> :
+                    <Tag icon={<CloseCircleOutlined />} color="default" bordered={false} className="rounded-full px-3 font-medium opacity-60">Inactive</Tag>
             ),
         },
         {
@@ -105,89 +109,84 @@ export default function UserManagement() {
             render: (_: any, record: any) => (
                 <Button
                     type="text"
-                    icon={<EditOutlined />}
+                    icon={<EditOutlined style={{ fontSize: '16px' }} />}
                     onClick={() => handleEdit(record)}
-                    className="hover:text-blue-600"
-                >
-                    Edit
-                </Button>
+                    className="hover:bg-slate-50 text-slate-400 hover:text-blue-600 rounded-lg h-9 w-9 flex items-center justify-center p-0"
+                />
             ),
         },
     ];
 
+    if (loading && users.length === 0) return <Layout><div className="max-w-6xl mx-auto"><LoadingState /></div></Layout>;
+
     return (
         <Layout>
             <div className="max-w-6xl mx-auto">
-                <div className="mb-8 p-8 bg-white rounded-3xl border border-slate-100 shadow-sm">
-                    <Breadcrumb
-                        style={{ marginBottom: 16 }}
-                        items={[
-                            { title: <Link to="/"><HomeOutlined /></Link> },
-                            { title: 'Administration' },
-                            { title: 'User Management' },
-                        ]}
-                    />
-                    <div className="flex justify-between items-end">
-                        <div className="">
-                            <Title level={2} style={{ margin: 0, fontWeight: 800, letterSpacing: '-0.03em' }}>User Management</Title>
-                            <Text type="secondary" className="text-lg">Manage system access, roles, and profiles.</Text>
-                        </div>
-                    </div>
-                </div>
+                <PageHeader
+                    title="User Directory"
+                    subtitle="Manage system access, identity roles, and account security profiles."
+                    breadcrumbItems={[
+                        { title: 'Administration' },
+                        { title: 'User Management' },
+                    ]}
+                />
 
                 <Card className="premium-card overflow-hidden" bodyStyle={{ padding: 0 }}>
-                    <Table
+                    <DataTable
                         columns={columns}
                         dataSource={users}
                         loading={loading}
                         rowKey="id"
-                        pagination={{ pageSize: 15 }}
-                        className="modern-table"
+                        pagination={{ pageSize: 12 }}
                     />
                 </Card>
 
                 <Modal
-                    title={<div className="text-xl font-bold py-2">Edit User Profile</div>}
+                    title={<div className="text-lg font-extrabold text-slate-800 tracking-tight py-1">User Configuration</div>}
                     open={editModalVisible}
                     onCancel={() => setEditModalVisible(false)}
                     onOk={() => form.submit()}
                     okText="Save Changes"
                     centered
-                    width={500}
+                    width={520}
                     className="premium-modal"
+                    bodyStyle={{ padding: '24px 0 0 0' }}
                 >
                     <Form
                         form={form}
                         layout="vertical"
                         onFinish={handleUpdate}
-                        className="pt-4"
+                        requiredMark="optional"
+                        className="px-6"
                     >
-                        <Form.Item
-                            name="full_name"
-                            label="Full Name"
-                            rules={[{ required: true, message: 'Please enter full name' }]}
-                        >
-                            <Input prefix={<UserOutlined className="text-slate-300" />} placeholder="John Doe" />
-                        </Form.Item>
+                        <div className="grid grid-cols-2 gap-x-6">
+                            <Form.Item
+                                name="full_name"
+                                label={<span className="font-semibold text-slate-700">Display Identity</span>}
+                                rules={[{ required: true, message: 'Identity required' }]}
+                                className="col-span-2"
+                            >
+                                <Input prefix={<UserOutlined className="text-slate-300" />} placeholder="e.g. John Doe" className="rounded-xl h-11" />
+                            </Form.Item>
 
-                        <Form.Item
-                            name="email"
-                            label="Email Address"
-                            rules={[
-                                { required: true, message: 'Please enter email' },
-                                { type: 'email', message: 'Please enter a valid email' }
-                            ]}
-                        >
-                            <Input placeholder="john@example.com" />
-                        </Form.Item>
+                            <Form.Item
+                                name="email"
+                                label={<span className="font-semibold text-slate-700">Communication Email</span>}
+                                rules={[
+                                    { required: true, message: 'Email required' },
+                                    { type: 'email', message: 'Invalid email format' }
+                                ]}
+                                className="col-span-2"
+                            >
+                                <Input prefix={<MailOutlined className="text-slate-300" />} placeholder="identity@domain.com" className="rounded-xl h-11" />
+                            </Form.Item>
 
-                        <div className="grid grid-cols-2 gap-4">
                             <Form.Item
                                 name="role_id"
-                                label="System Role"
-                                rules={[{ required: true, message: 'Please select a role' }]}
+                                label={<span className="font-semibold text-slate-700">Security Role</span>}
+                                rules={[{ required: true, message: 'Role assignment required' }]}
                             >
-                                <Select placeholder="Select Role">
+                                <Select placeholder="Assign Role" className="modern-select rounded-xl h-11">
                                     {roles.map(role => (
                                         <Select.Option key={role.id} value={role.id}>{role.name}</Select.Option>
                                     ))}
@@ -196,23 +195,27 @@ export default function UserManagement() {
 
                             <Form.Item
                                 name="is_active"
-                                label="Account Status"
+                                label={<span className="font-semibold text-slate-700">Account Status</span>}
                                 valuePropName="checked"
+                                className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100"
                             >
-                                <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                                <Switch checkedChildren="ON" unCheckedChildren="OFF" />
+                                <span className="ml-3 text-xs font-bold text-slate-400 uppercase tracking-widest">Active Access</span>
                             </Form.Item>
                         </div>
 
-                        <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <div className="flex items-center gap-2 mb-3 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
-                                <LockOutlined /> Security & Password
+                        <div className="mt-6 mb-8 p-5 bg-slate-900 rounded-3xl border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl -mr-16 -mt-16 rounded-full pointer-events-none"></div>
+                            <div className="flex items-center gap-2 mb-4 text-white/40 font-bold text-[10px] uppercase tracking-[0.2em] relative z-10">
+                                <LockOutlined className="text-blue-400" /> Security Credential Setup
                             </div>
                             <Form.Item
                                 name="password"
-                                label="Reset Password"
-                                help="Leave blank to keep current password"
+                                label={<span className="font-semibold text-white/70">Reset Password</span>}
+                                className="mb-0"
+                                help={<span className="text-white/30 text-[10px]">Leave blank to maintain current credentials</span>}
                             >
-                                <Input.Password placeholder="••••••••" />
+                                <Input.Password placeholder="••••••••" className="rounded-xl h-11 bg-white/5 border-white/10 text-white placeholder:text-white/20" />
                             </Form.Item>
                         </div>
                     </Form>
