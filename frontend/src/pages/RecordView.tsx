@@ -28,6 +28,7 @@ import type { ModuleDefinition } from '../api';
 import { pluginRegistry } from '../framework/pluginRegistry';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LoadingState, EmptyState } from '../components/ui/Feedback';
+import { useAuth } from '../context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -35,6 +36,7 @@ const { TextArea } = Input;
 function AssociationTab({ view, record, module }: { view: any, record: any, module: string }) {
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useAuth();
 
     useEffect(() => {
         if (!view.target) return;
@@ -50,11 +52,13 @@ function AssociationTab({ view, record, module }: { view: any, record: any, modu
         <div className="py-4">
             <div className="flex justify-between items-center mb-6">
                 <Title level={4} className="!m-0 font-bold">{view.name}</Title>
-                <Link to={`/app/${view.target.toLowerCase()}/new?${module.toLowerCase()}_id=${record.id}`}>
-                    <Button type="primary" icon={<LinkOutlined />}>
-                        Add {view.target}
-                    </Button>
-                </Link>
+                {hasPermission(`${view.target.toLowerCase()}:create`) && (
+                    <Link to={`/app/${view.target.toLowerCase()}/new?${module.toLowerCase()}_id=${record.id}`}>
+                        <Button type="primary" icon={<LinkOutlined />}>
+                            Add {view.target}
+                        </Button>
+                    </Link>
+                )}
             </div>
             {loading ? (
                 <LoadingState />
@@ -99,6 +103,7 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
     const [loading, setLoading] = useState(true);
     const [newComment, setNewComment] = useState("");
     const [posting, setPosting] = useState(false);
+    const { user } = useAuth();
 
     const loadComments = () => {
         setLoading(true);
@@ -117,7 +122,7 @@ function CommentsTab({ record, module }: { record: any, module: string }) {
                 model_name: module,
                 record_id: record.id,
                 content: newComment,
-                author: "Demo User"
+                author: user?.full_name || "Unknown User"
             });
             setNewComment("");
             loadComments();
@@ -244,6 +249,7 @@ function HistoryTab({ record, module }: { record: any, module: string }) {
 export default function RecordView() {
     const { module, id } = useParams<{ module: string; id: string }>();
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
     const [record, setRecord] = useState<any>(null);
     const [definition, setDefinition] = useState<ModuleDefinition | null>(null);
     const [loading, setLoading] = useState(true);
@@ -363,21 +369,25 @@ export default function RecordView() {
                     ]}
                     extra={
                         <Space size={12}>
-                            <Link to={`/app/${module}/${record.id}/edit`}>
-                                <Button size="large" icon={<EditOutlined />} className="font-semibold shadow-sm rounded-xl">
-                                    Edit Record
-                                </Button>
-                            </Link>
-                            <Popconfirm
-                                title="Delete this record?"
-                                description="This action cannot be undone."
-                                onConfirm={handleDelete}
-                                okText="Delete"
-                                cancelText="Cancel"
-                                okButtonProps={{ danger: true, loading: deleting }}
-                            >
-                                <Button size="large" danger icon={<DeleteOutlined />} className="shadow-sm rounded-xl" />
-                            </Popconfirm>
+                            {hasPermission(`${module}:update`) && (
+                                <Link to={`/app/${module}/${record.id}/edit`}>
+                                    <Button size="large" icon={<EditOutlined />} className="font-semibold shadow-sm rounded-xl">
+                                        Edit Record
+                                    </Button>
+                                </Link>
+                            )}
+                            {hasPermission(`${module}:delete`) && (
+                                <Popconfirm
+                                    title="Delete this record?"
+                                    description="This action cannot be undone."
+                                    onConfirm={handleDelete}
+                                    okText="Delete"
+                                    cancelText="Cancel"
+                                    okButtonProps={{ danger: true, loading: deleting }}
+                                >
+                                    <Button size="large" danger icon={<DeleteOutlined />} className="shadow-sm rounded-xl" />
+                                </Popconfirm>
+                            )}
                         </Space>
                     }
                 />

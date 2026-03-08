@@ -17,8 +17,10 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import Layout from '../components/Layout';
+import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LoadingState } from '../components/ui/Feedback';
+import { useAuth } from '../context/AuthContext';
 
 
 const { } = Typography;
@@ -27,6 +29,7 @@ export default function RecordForm() {
     const { module, id } = useParams<{ module: string; id?: string }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const { hasPermission, loading: authLoading } = useAuth();
     const [form] = Form.useForm();
     const isEditing = Boolean(id);
 
@@ -35,7 +38,16 @@ export default function RecordForm() {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (!module) return;
+        if (!module || authLoading) return;
+
+        // Permission check
+        const perm = isEditing ? 'update' : 'create';
+        if (!hasPermission(`${module}:${perm}`)) {
+            message.error(`You do not have permission to ${perm} ${module} records.`);
+            navigate(isEditing ? `/app/${module}/${id}` : `/app/${module}`);
+            return;
+        }
+
         setLoading(true);
         const loads: Promise<any>[] = [api.fetchModuleDefinition(module)];
         if (isEditing && id) loads.push(api.fetchRecord(module, Number(id)));

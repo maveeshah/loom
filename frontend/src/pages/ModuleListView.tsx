@@ -21,12 +21,14 @@ import Layout from '../components/Layout';
 import { api } from '../api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { DataTable } from '../components/ui/DataTable';
+import { useAuth } from '../context/AuthContext';
 
 const { Text } = Typography;
 
 export default function ModuleListView() {
     const { module } = useParams<{ module: string }>();
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
     const [records, setRecords] = useState<any[]>([]);
     const [definition, setDefinition] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -123,23 +125,27 @@ export default function ModuleListView() {
                             onClick={() => navigate(`/app/${module}/${record.id}`)}
                         />
                     </Tooltip>
-                    <Tooltip title="Edit">
-                        <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={() => navigate(`/app/${module}/${record.id}/edit`)}
-                        />
-                    </Tooltip>
-                    <Popconfirm
-                        title="Delete this record?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
-                    >
-                        <Tooltip title="Delete">
-                            <Button type="text" danger icon={<DeleteOutlined />} />
+                    {hasPermission(`${module}:update`) && (
+                        <Tooltip title="Edit">
+                            <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                onClick={() => navigate(`/app/${module}/${record.id}/edit`)}
+                            />
                         </Tooltip>
-                    </Popconfirm>
+                    )}
+                    {hasPermission(`${module}:delete`) && (
+                        <Popconfirm
+                            title="Delete this record?"
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="Yes"
+                            cancelText="No"
+                        >
+                            <Tooltip title="Delete">
+                                <Button type="text" danger icon={<DeleteOutlined />} />
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },
@@ -158,14 +164,16 @@ export default function ModuleListView() {
                         { title: displayName },
                     ]}
                     extra={
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<PlusOutlined />}
-                            onClick={() => navigate(`/app/${module}/new`)}
-                        >
-                            New {displayName}
-                        </Button>
+                        hasPermission(`${module}:create`) && (
+                            <Button
+                                type="primary"
+                                size="large"
+                                icon={<PlusOutlined />}
+                                onClick={() => navigate(`/app/${module}/new`)}
+                            >
+                                New {displayName}
+                            </Button>
+                        )
                     }
                 />
 
