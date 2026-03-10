@@ -7,7 +7,7 @@ from auth_utils import get_current_user
 router = APIRouter(prefix="/settings", tags=["System Settings"])
 
 
-@router.get("/")
+@router.get("")
 def get_settings(db: Session = Depends(get_db)):
     settings = db.query(models.SystemSetting).all()
     return {s.key: s.value for s in settings}
