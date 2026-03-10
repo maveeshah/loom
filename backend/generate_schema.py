@@ -35,16 +35,55 @@ def generate_all_models():
 
     # Start with the necessary imports for your models
     content = [
-        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func, ForeignKey",
+        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func, ForeignKey, Table",
         "from sqlalchemy.orm import relationship",
         "from datetime import datetime",
         "from database import Base\n\n",
+        "role_permissions = Table(",
+        "    'role_permissions', Base.metadata,",
+        "    Column('role_id', Integer, ForeignKey('roles.id'), primary_key=True),",
+        "    Column('permission_id', Integer, ForeignKey('permissions.id'), primary_key=True)",
+        ")\n\n",
+        "class Permission(Base):",
+        "    __tablename__ = 'permissions'",
+        "    id = Column(Integer, primary_key=True, index=True)",
+        "    name = Column(String, unique=True, index=True)",
+        "    code = Column(String, unique=True, index=True)",
+        "    module = Column(String, index=True)\n\n",
+        "class Role(Base):",
+        "    __tablename__ = 'roles'",
+        "    id = Column(Integer, primary_key=True, index=True)",
+        "    name = Column(String, unique=True, index=True)",
+        "    permissions = relationship('Permission', secondary=role_permissions)\n\n",
+        "class User(Base):",
+        "    __tablename__ = 'users'",
+        "    id = Column(Integer, primary_key=True, index=True)",
+        "    email = Column(String, index=True)",
+        "    full_name = Column(String)",
+        "    hashed_password = Column(String)",
+        "    format = Column(String, default='standard')",
+        "    is_active = Column(Boolean, default=True)",
+        "    created_at = Column(DateTime, default=func.now())",
+        "    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())",
+        "    role_id = Column(Integer, ForeignKey('roles.id'))",
+        "    role = relationship('Role')\n\n",
+        "class SystemSetting(Base):",
+        "    __tablename__ = 'system_settings'",
+        "    key = Column(String, primary_key=True, index=True)",
+        "    value = Column(String)",
+        "    group = Column(String)",
+        "    description = Column(String)",
+        "    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())\n\n",
     ]
 
     # SECOND PASS: Generate Code
     for blueprint in blueprints:
         name = blueprint["name"]
         class_name = name.replace(" ", "")
+
+        if class_name in ["Role", "User", "Permission"]:
+            continue
+
         table_name = class_to_table[class_name]
 
         fields = blueprint.get("fields", [])
@@ -73,6 +112,9 @@ def generate_all_models():
             # Auto-map relationships to JSON arrays for prototyping
             if f_type in ["ManyToMany", "OneToMany", "ManyToOne", "OneToOne"]:
                 f_type = "JSON"
+            elif f_type == "Select":
+                f_type = "String"
+
             f_default = field.get("default")
 
             # Handle defaults if they exist
