@@ -1,0 +1,39 @@
+name: Project
+module: Operations
+description: Manage and track organizational projects
+ui:
+  show_in_sidebar: true
+  icon: project
+  default_view: summary
+views:
+- name: Summary
+  type: summary
+  id: summary
+fields:
+- name: name
+  label: Project Name
+  type: String
+  required: true
+- name: description
+  label: Description
+  type: String
+- name: status
+  label: Status
+  type: Select
+  options:
+    - Planning
+    - In Progress
+    - Completed
+    - On Hold
+    - Cancelled
+  default: Planning
+- name: budget
+  label: Budget
+  type: Float
+- name: is_active
+  label: Is Active
+  type: Boolean
+  default: true
+slug: project
+permission_namespace: project
+table_name: projects
