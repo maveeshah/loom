@@ -18,50 +18,52 @@ Please refer to the following guides for detailed information:
 - [Frontend Framework Guide](docs/frontend-framework.md)
 - [Plugins Overview](docs/plugins.md)
 
-## Quickstart
+## Quickstart (Framework Mode)
 
-### Running with Docker
+Loom v0.1.0b1+ is distributed as a python package (`loom-core`) rather than a monolithic repository. You install the core framework, then initialize your own separate project repositories that consume it.
 
-The entire platform is containerized using Docker. Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed.
+### 1. Install Loom Core
 
-#### 1. Build and Start Services
+Clone this repository and install it locally in editable mode (until it is published to PyPI):
+
 ```bash
-docker-compose up --build
+git clone https://github.com/your-org/loom-core.git
+cd loom-core/backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
-This command will:
-- Spin up a **PostgreSQL** database (port `5433`).
-- Start the **FastAPI** backend (port `8010`).
-- Start the **React** (Vite) frontend (port `3010`).
+This installs the `loom` CLI globally into your virtual environment.
 
-#### 2. Accessing the Platform
-- **Frontend**: [http://localhost:3010](http://localhost:3010)
-- **Backend API Docs**: [http://localhost:8010/docs](http://localhost:8010/docs)
+### 2. Scaffold a New Project
 
-### Common Commands
+Navigate outside of the `loom-core` directory and create your own project:
 
-- **Stop Services**: `docker-compose down`
-- **View Logs**: `docker-compose logs -f`
-- **Restart a specific service**: `docker-compose restart backend`
-- **Run migrations manually**: `docker-compose exec backend alembic upgrade head`
+```bash
+cd ../
+loom init my-crm-app
+cd my-crm-app
+```
 
-### Database Migrations
+The CLI creates a structure containing `blueprints/`, `plugins/`, and an `.env` file configured for local (`personal`) development.
 
-Because the framework dynamically generates SQLAlchemy models from YAML blueprints, you **must not** rely on automatic schema updates in production.
+### 3. Add Blueprints and Run
 
-To create database migrations after modifying a YAML blueprint:
-1. Run `./make_migrations.sh` locally. This script regenerates `models.py` and runs `alembic revision --autogenerate`.
-2. Review the generated Alembic migration file under `backend/migrations/versions/`.
-3. Commit the new migration to source control.
-4. When `docker-compose up` is run, the backend container will automatically execute `alembic upgrade head`.
+```bash
+# Start the interactive AI blueprint generator
+loom add blueprint Patient
 
-### Adding Your First Module
+# Generate your database schema and Alembic migrations
+loom generate migration -m "Add Patient table"
 
-1. Create `backend/blueprints/my_module.yaml`.
-2. Define the schema according to the [Blueprints Reference](docs/blueprints.md).
-3. Run `./make_migrations.sh` to update models and generate a database migration.
-4. The backend automatically manages the database and exposes generic CRUD `/v1/app/my_module` with dynamic Pydantic payload validation and automatic OpenAPI Swagger documentation.
-5. The frontend renders `/app/my_module` dynamically without writing boilerplate React code, complete with pagination, search, and lazy-loaded plugins.
+# Start the dev server with hot-reload enabled
+loom run dev
+```
+
+The backend API will be available at [http://localhost:8010/docs](http://localhost:8010/docs).
+
+> **Note**: For production ("organization" mode) with strict RBAC, Postgres, and Docker Compose deployments, see the [Setup Guide](docs/setup-guide.md).
 
 ## Out of the Box Functionality
 
