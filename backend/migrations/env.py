@@ -9,16 +9,14 @@ sys.path.append(os.getcwd())
 
 # 2. CRITICAL: Import your Base and Models
 # If your files are named differently (e.g., database.py), update these imports.
-from database import Base
+from database import Base, DATABASE_URL
 import models  # This ensures all models are registered to the Base
 
 # This is the Alembic Config object
 config = context.config
 
-# 3. CRITICAL: Overwrite the sqlalchemy.url with the one from Docker environment
-# This prevents you from having to hardcode the password in alembic.ini
-if os.getenv("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+# 3. CRITICAL: Overwrite the sqlalchemy.url with the one from database.py
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -39,19 +37,28 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    # 5. We use the config we modified above with the Env Var
-    connectable = engine_from_config(
+import asyncio
+from sqlalchemy.ext.asyncio import async_engine_from_config
+
+def do_run_migrations(connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+async def run_async_migrations() -> None:
+    connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-        with context.begin_transaction():
-            context.run_migrations()
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+        
+    await connectable.dispose()
 
+def run_migrations_online() -> None:
+    asyncio.run(run_async_migrations())
 
 if context.is_offline_mode():
     run_migrations_offline()
