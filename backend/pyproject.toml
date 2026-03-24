@@ -1,0 +1,35 @@
+[project]
+name = "loom-core"
+version = "0.1.0b1"
+description = "A blueprint-driven full-stack framework."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "asyncpg",
+    "alembic",
+    "pydantic",
+    "pydantic-settings",
+    "PyYAML",
+    "passlib",
+    "bcrypt==4.0.1",
+    "python-jose[cryptography]",
+    "python-multipart",
+    "aiosqlite"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "watchfiles"
+]
+
+[project.scripts]
+loom = "loom.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
