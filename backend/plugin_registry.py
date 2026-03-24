@@ -3,6 +3,8 @@ from fastapi import APIRouter
 import importlib
 
 
+import inspect
+
 class HookRegistry:
     def __init__(self):
         # Hooks stored as { "model_name:action": [handler1, handler2] }
@@ -15,11 +17,14 @@ class HookRegistry:
             self.hooks[key] = []
         self.hooks[key].append(handler)
 
-    def execute(self, model_name: str, action: str, *args, **kwargs):
+    async def execute(self, model_name: str, action: str, *args, **kwargs):
         key = f"{model_name.lower()}:{action.lower()}"
         for handler in self.hooks.get(key, []):
             try:
-                handler(*args, **kwargs)
+                if inspect.iscoroutinefunction(handler):
+                    await handler(*args, **kwargs)
+                else:
+                    handler(*args, **kwargs)
             except Exception as e:
                 # Decide if hooks should fail the original request or just log
                 print(f"Error in hook {key}: {e}")

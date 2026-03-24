@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -7,25 +7,21 @@ from settings import get_settings
 
 settings = get_settings()
 
-# 1. Get the URL from Docker environment variables
-# Note: 'db' is the name of the service in your docker-compose.yml
 DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("sqlite://"):
+    DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
-# 2. The Engine is the actual connection to the DB
-engine = create_engine(DATABASE_URL)
+engine = create_async_engine(DATABASE_URL, echo=False)
 
-# 3. SessionLocal is a factory for database sessions
-# We set expire_on_commit=False so we can access objects after a commit
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+)
 
-# 4. The Base class that all your "DocTypes" (Models) will inherit from
 Base = declarative_base()
 
-
-# 5. Dependency: This is how FastAPI routes will get a DB connection
-def get_db():
-    db = SessionLocal()
-    try:
+async def get_db():
+    async with SessionLocal() as db:
         yield db
-    finally:
-        db.close()  # CRITICAL: This closes the connection after the request is done
+

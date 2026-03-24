@@ -4,7 +4,7 @@
 
 echo "Generating models.py from blueprints..."
 cd backend
-python generate_schema.py
+python3 generate_schema.py
 
 echo "Generating Alembic migration..."
 alembic revision --autogenerate -m "auto-generated from blueprint updates"
