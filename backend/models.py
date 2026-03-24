@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, func, ForeignKey, Table
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -49,52 +50,16 @@ class SystemSetting(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
-class Department(Base):
-    __tablename__ = 'departments'
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    budget = Column(Float)
-    is_active = Column(Boolean, default=True)
-    employees = relationship('Employee')
-
-class Employee(Base):
-    __tablename__ = 'employees'
-    id = Column(Integer, primary_key=True, index=True)
-    first_name = Column(String)
-    last_name = Column(String)
-    title = Column(String)
-    is_active = Column(Boolean, default=True)
-    department_id = Column(Integer, ForeignKey('departments.id'))
-    department = relationship('Department')
-    companydocuments = relationship('CompanyDocument')
-
 class AuditLog(Base):
     __tablename__ = 'auditlogs'
     id = Column(Integer, primary_key=True, index=True)
     model_name = Column(String)
     record_id = Column(Integer)
     action = Column(String)
-    changes = Column(String)
+    changes = Column(JSONB)
     actor = Column(String, default='System User')
     timestamp = Column(DateTime, default=func.now())
 
-class CompanyDocument(Base):
-    __tablename__ = 'company_documents'
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    file_url = Column(String)
-    classification = Column(String, default='Confidential')
-    employee_id = Column(Integer, ForeignKey('employees.id'))
-    employee = relationship('Employee')
-
-class Project(Base):
-    __tablename__ = 'projects'
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
-    description = Column(String)
-    status = Column(String, default='Planning')
-    budget = Column(Float)
-    is_active = Column(Boolean, default=True)
 
 class Comment(Base):
     __tablename__ = 'comments'
@@ -104,3 +69,4 @@ class Comment(Base):
     content = Column(String)
     author = Column(String, default='System User')
     created_at = Column(DateTime, default=func.now())
+

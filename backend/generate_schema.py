@@ -35,7 +35,8 @@ def generate_all_models():
 
     # Start with the necessary imports for your models
     content = [
-        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, JSON, func, ForeignKey, Table",
+        "from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Float, func, ForeignKey, Table",
+        "from sqlalchemy.dialects.postgresql import JSONB",
         "from sqlalchemy.orm import relationship",
         "from datetime import datetime",
         "from database import Base\n\n",
@@ -74,6 +75,23 @@ def generate_all_models():
         "    group = Column(String)",
         "    description = Column(String)",
         "    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())\n\n",
+        "class AuditLog(Base):",
+        "    __tablename__ = 'auditlogs'",
+        "    id = Column(Integer, primary_key=True, index=True)",
+        "    model_name = Column(String)",
+        "    record_id = Column(Integer)",
+        "    action = Column(String)",
+        "    changes = Column(JSONB)",
+        "    actor = Column(String, default='System User')",
+        "    timestamp = Column(DateTime, default=func.now())\n\n",
+        "class Comment(Base):",
+        "    __tablename__ = 'comments'",
+        "    id = Column(Integer, primary_key=True, index=True)",
+        "    model_name = Column(String)",
+        "    record_id = Column(Integer)",
+        "    content = Column(String)",
+        "    author = Column(String, default='System User')",
+        "    created_at = Column(DateTime, default=func.now())\n\n",
     ]
 
     # SECOND PASS: Generate Code
@@ -81,12 +99,14 @@ def generate_all_models():
         name = blueprint["name"]
         class_name = name.replace(" ", "")
 
-        if class_name in ["Role", "User", "Permission"]:
+        # Skip models that are hardcoded as core framework models above.
+        # These must NEVER be redefined by blueprints — they are loom-core owned.
+        CORE_MODELS = {"Role", "User", "Permission", "SystemSetting", "AuditLog", "Comment"}
+        if class_name in CORE_MODELS:
             continue
 
         table_name = class_to_table[class_name]
 
-        fields = blueprint.get("fields", [])
         associations = blueprint.get("associations", [])
 
         # Build the SQLAlchemy Class
@@ -94,45 +114,10 @@ def generate_all_models():
         model_code += f"    __tablename__ = '{table_name}'\n"
         model_code += "    id = Column(Integer, primary_key=True, index=True)\n"
 
-        # Collect foreign keys to avoid duplicate column definitions
-        fks = [
-            assoc.get("foreign_key")
-            for assoc in associations
-            if assoc.get("type") == "belongs_to" and assoc.get("foreign_key")
-        ]
-
-        # Generate fields
-        for field in fields:
-            f_name = field["name"]
-            if f_name in fks:
-                continue
-
-            f_type = field["type"]
-
-            # Auto-map relationships to JSON arrays for prototyping
-            if f_type in ["ManyToMany", "OneToMany", "ManyToOne", "OneToOne"]:
-                f_type = "JSON"
-            elif f_type == "Select":
-                f_type = "String"
-
-            f_default = field.get("default")
-
-            # Handle defaults if they exist
-            if f_default == "now()":
-                f_default = "func.now()"
-            elif f_type == "String" and f_default is not None:
-                # Wrap string defaults in quotes to avoid NameError in models.py
-                f_default = f"'{f_default}'"
-
-            f_onupdate = field.get("onupdate")
-            if f_onupdate == "now()":
-                f_onupdate = "func.now()"
-
-            default_str = f", default={f_default}" if f_default is not None else ""
-            onupdate_str = f", onupdate={f_onupdate}" if f_onupdate is not None else ""
-            model_code += (
-                f"    {f_name} = Column({f_type}{default_str}{onupdate_str})\n"
-            )
+        # Add core tracking columns and the JSONB column for custom fields
+        model_code += "    created_at = Column(DateTime, default=func.now())\n"
+        model_code += "    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())\n"
+        model_code += "    data = Column(JSONB, default=dict)\n"
 
         # Generate associations (Foreign Keys and Relationships)
         for assoc in associations:
@@ -166,9 +151,21 @@ def generate_all_models():
 
         content.append(model_code)
 
+    code_str = "\n".join(content)
+    
+    # Validate the generated code
+    try:
+        compile(code_str, "models_generated", "exec")
+    except SyntaxError as e:
+        print("❌ CRITICAL ERROR: Generated Python code contains syntax errors!")
+        print(f"   Details: {e}")
+        import traceback
+        traceback.print_exc()
+        return
+
     # Overwrite models.py so it's always fresh
     with open("models.py", "w") as f:
-        f.write("\n".join(content))
+        f.write(code_str)
 
     print(f"🚀 Rebuilt models.py with {len(blueprints)} schemas.")
 

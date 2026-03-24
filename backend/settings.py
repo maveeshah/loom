@@ -27,7 +27,10 @@ class Settings(BaseSettings):
     ]
 
     # One or more directories (relative to the backend package root) to search
-    # for YAML blueprints. This enables a core + plugin/tenant separation.
+    # for YAML blueprints. This enables a core + project separation:
+    #   - "blueprints"           → loom-core owned (User, Role — do not modify)
+    #   - "blueprints_project"   → project-specific overrides (your domain models)
+    # Override via: LOOM_BLUEPRINT_PATHS=blueprints,../my-project/blueprints
     blueprint_paths: List[str] = ["blueprints"]
 
     # Directories (relative or absolute) to search for backend plugins.
@@ -46,6 +49,15 @@ class Settings(BaseSettings):
     # Global Feature Flags
     enable_comments: bool = True
     enable_audit: bool = True
+
+    # Execution Mode
+    # "personal"      → fast iteration, loose RBAC, debug endpoints enabled, SQLite allowed
+    # "organization"  → strict RBAC, audit enforced, debug endpoints disabled, Postgres required
+    workspace_type: str = "personal"
+
+    @property
+    def is_org_mode(self) -> bool:
+        return self.workspace_type == "organization"
 
     class Config:
         env_prefix = "LOOM_"
