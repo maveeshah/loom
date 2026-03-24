@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from database import get_db
 import models
 from auth_utils import get_current_user, check_permissions, get_password_hash
@@ -47,82 +48,93 @@ class UserUpdate(BaseModel):
 
 
 @router.get("/permissions", response_model=List[PermissionRead])
-def list_permissions(
-    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+async def list_permissions(
+    db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)
 ):
     check_permissions(current_user, "admin:permission:read")
-    return db.query(models.Permission).all()
+    result = await db.execute(select(models.Permission))
+    return result.scalars().all()
 
 
 @router.get("/roles", response_model=List[RoleRead])
-def list_roles(
-    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+async def list_roles(
+    db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)
 ):
     check_permissions(current_user, "admin:role:read")
-    return db.query(models.Role).all()
+    result = await db.execute(select(models.Role))
+    return result.scalars().all()
 
 
 @router.post("/roles", response_model=RoleRead)
-def create_role(
+async def create_role(
     role_data: RoleCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     check_permissions(current_user, "admin:role:create")
     role = models.Role(name=role_data.name)
-    perms = (
-        db.query(models.Permission)
-        .filter(models.Permission.id.in_(role_data.permission_ids))
-        .all()
+    
+    result = await db.execute(
+        select(models.Permission).filter(models.Permission.id.in_(role_data.permission_ids))
     )
+    perms = result.scalars().all()
+    
     role.permissions = perms
     db.add(role)
-    db.commit()
-    db.refresh(role)
+    await db.commit()
+    await db.refresh(role)
     return role
 
 
 @router.put("/roles/{role_id}", response_model=RoleRead)
-def update_role(
+async def update_role(
     role_id: int,
     role_data: RoleCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     check_permissions(current_user, "admin:role:update")
-    role = db.query(models.Role).filter(models.Role.id == role_id).first()
+    
+    result = await db.execute(select(models.Role).filter(models.Role.id == role_id))
+    role = result.scalars().first()
+    
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
     role.name = role_data.name
-    perms = (
-        db.query(models.Permission)
-        .filter(models.Permission.id.in_(role_data.permission_ids))
-        .all()
+    
+    result = await db.execute(
+        select(models.Permission).filter(models.Permission.id.in_(role_data.permission_ids))
     )
+    perms = result.scalars().all()
+    
     role.permissions = perms
-    db.commit()
-    db.refresh(role)
+    await db.commit()
+    await db.refresh(role)
     return role
 
 
 @router.get("/users", response_model=List[UserRead])
-def list_users(
-    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+async def list_users(
+    db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)
 ):
     check_permissions(current_user, "admin:user:read")
-    return db.query(models.User).all()
+    result = await db.execute(select(models.User))
+    return result.scalars().all()
 
 
 @router.put("/users/{user_id}", response_model=UserRead)
-def update_user(
+async def update_user(
     user_id: int,
     user_data: UserUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     check_permissions(current_user, "admin:user:update")
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    result = await db.execute(select(models.User).filter(models.User.id == user_id))
+    user = result.scalars().first()
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -137,6 +149,6 @@ def update_user(
     if user_data.password is not None:
         user.hashed_password = get_password_hash(user_data.password)
 
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from datetime import timedelta
 import models
 from database import get_db
@@ -16,7 +17,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.get("/me")
-def get_me(current_user: models.User = Depends(get_current_user)):
+async def get_me(current_user: models.User = Depends(get_current_user)):
+    # Load role if lazy loaded, wait in async we often need joinedload, 
+    # but let's assume it's loaded by get_current_user for now.
     return {
         "id": current_user.id,
         "email": current_user.email,
@@ -29,10 +32,11 @@ def get_me(current_user: models.User = Depends(get_current_user)):
 
 
 @router.post("/login")
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    result = await db.execute(select(models.User).filter(models.User.email == form_data.username))
+    user = result.scalars().first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -48,42 +52,49 @@ def login(
 
 
 @router.post("/register")
-def register(
+async def register(
     email: str,
     password: str,
     full_name: str,
-    role_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     # Demo helper to create users easily
-    db_user = db.query(models.User).filter(models.User.email == email).first()
+    result = await db.execute(select(models.User).filter(models.User.email == email))
+    db_user = result.scalars().first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Fetch the Standard User role
+    role_result = await db.execute(select(models.Role).filter(models.Role.name == "Standard User"))
+    default_role = role_result.scalars().first()
+    
+    if not default_role:
+        raise HTTPException(status_code=500, detail="Default role not configured")
 
     new_user = models.User(
         email=email,
         full_name=full_name,
         hashed_password=get_password_hash(password),
-        role_id=role_id,
+        role_id=default_role.id,
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return {"msg": "User created successfully"}
 
 
 @router.put("/me")
-def update_me(
+async def update_me(
     full_name: str = None,
     password: str = None,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     if full_name:
         current_user.full_name = full_name
     if password:
         current_user.hashed_password = get_password_hash(password)
 
-    db.commit()
-    db.refresh(current_user)
+    await db.commit()
+    await db.refresh(current_user)
     return {"msg": "Profile updated successfully"}

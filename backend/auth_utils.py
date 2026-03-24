@@ -5,7 +5,9 @@ from jose import jwt
 import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 import models
 from database import get_db
 
@@ -49,8 +51,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,9 +67,15 @@ def get_current_user(
     except Exception:
         raise credentials_exception
 
-    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    result = await db.execute(
+        select(models.User)
+        .options(selectinload(models.User.role).selectinload(models.Role.permissions))
+        .filter(models.User.id == int(user_id))
+    )
+    user = result.scalars().first()
     if user is None:
         raise credentials_exception
+    user.permission_codes = {p.code for p in user.role.permissions} if user.role else set()
     return user
 
 
@@ -79,8 +87,8 @@ def check_permissions(user: models.User, required_permission: str):
     if not user.role:
         raise HTTPException(status_code=403, detail="Forbidden: No role assigned")
 
-    # Convert Permission objects to a set of codes for efficient lookup
-    user_perm_codes = {p.code for p in user.role.permissions}
+    # Conversion is cached on the user object for efficient O(1) lookup
+    user_perm_codes = getattr(user, 'permission_codes', {p.code for p in user.role.permissions})
 
     # Superadmin wildcard
     if "*:*" in user_perm_codes:
