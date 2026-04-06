@@ -1,0 +1,15 @@
+name: Employee
+module: Human Resource
+
+fields:
+  first_name:
+    type: string
+    required: true
+  last_name:
+    type: string
+    required: true
+  email:
+    type: string
+    unique: true
+    required: true
+  

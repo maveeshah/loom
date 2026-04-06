@@ -1,8 +1,8 @@
-"""auto-generated from blueprint updates
+"""initial_baseline
 
-Revision ID: 2e6c856ecdbc
+Revision ID: 2de7d1ce86e6
 Revises: 
-Create Date: 2026-03-22 19:28:43.825264
+Create Date: 2026-03-24 15:21:31.960156
 
 """
 from typing import Sequence, Union
@@ -10,10 +10,9 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.types import Text
 
 # revision identifiers, used by Alembic.
-revision: str = '2e6c856ecdbc'
+revision: str = '2de7d1ce86e6'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,7 +26,7 @@ def upgrade() -> None:
     sa.Column('model_name', sa.String(), nullable=True),
     sa.Column('record_id', sa.Integer(), nullable=True),
     sa.Column('action', sa.String(), nullable=True),
-    sa.Column('changes', postgresql.JSONB(astext_type=Text()), nullable=True),
+    sa.Column('changes', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('actor', sa.String(), nullable=True),
     sa.Column('timestamp', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -43,14 +42,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_comments_id'), 'comments', ['id'], unique=False)
-    op.create_table('departments',
+    op.create_table('employees',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('data', postgresql.JSONB(astext_type=Text()), nullable=True),
+    sa.Column('data', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_departments_id'), 'departments', ['id'], unique=False)
+    op.create_index(op.f('ix_employees_id'), 'employees', ['id'], unique=False)
+    op.create_table('invoices',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('data', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_invoices_id'), 'invoices', ['id'], unique=False)
     op.create_table('permissions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
@@ -62,14 +69,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_permissions_id'), 'permissions', ['id'], unique=False)
     op.create_index(op.f('ix_permissions_module'), 'permissions', ['module'], unique=False)
     op.create_index(op.f('ix_permissions_name'), 'permissions', ['name'], unique=True)
-    op.create_table('projects',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('data', postgresql.JSONB(astext_type=Text()), nullable=True),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_projects_id'), 'projects', ['id'], unique=False)
     op.create_table('roles',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
@@ -86,16 +85,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('key')
     )
     op.create_index(op.f('ix_system_settings_key'), 'system_settings', ['key'], unique=False)
-    op.create_table('employees',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('data', postgresql.JSONB(astext_type=Text()), nullable=True),
-    sa.Column('department_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['department_id'], ['departments.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_employees_id'), 'employees', ['id'], unique=False)
     op.create_table('role_permissions',
     sa.Column('role_id', sa.Integer(), nullable=False),
     sa.Column('permission_id', sa.Integer(), nullable=False),
@@ -118,44 +107,30 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
-    op.create_table('company_documents',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('data', postgresql.JSONB(astext_type=Text()), nullable=True),
-    sa.Column('employee_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['employee_id'], ['employees.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_company_documents_id'), 'company_documents', ['id'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(op.f('ix_company_documents_id'), table_name='company_documents')
-    op.drop_table('company_documents')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('role_permissions')
-    op.drop_index(op.f('ix_employees_id'), table_name='employees')
-    op.drop_table('employees')
     op.drop_index(op.f('ix_system_settings_key'), table_name='system_settings')
     op.drop_table('system_settings')
     op.drop_index(op.f('ix_roles_name'), table_name='roles')
     op.drop_index(op.f('ix_roles_id'), table_name='roles')
     op.drop_table('roles')
-    op.drop_index(op.f('ix_projects_id'), table_name='projects')
-    op.drop_table('projects')
     op.drop_index(op.f('ix_permissions_name'), table_name='permissions')
     op.drop_index(op.f('ix_permissions_module'), table_name='permissions')
     op.drop_index(op.f('ix_permissions_id'), table_name='permissions')
     op.drop_index(op.f('ix_permissions_code'), table_name='permissions')
     op.drop_table('permissions')
-    op.drop_index(op.f('ix_departments_id'), table_name='departments')
-    op.drop_table('departments')
+    op.drop_index(op.f('ix_invoices_id'), table_name='invoices')
+    op.drop_table('invoices')
+    op.drop_index(op.f('ix_employees_id'), table_name='employees')
+    op.drop_table('employees')
     op.drop_index(op.f('ix_comments_id'), table_name='comments')
     op.drop_table('comments')
     op.drop_index(op.f('ix_auditlogs_id'), table_name='auditlogs')
