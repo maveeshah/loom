@@ -32,7 +32,7 @@ Loom is a **blueprint-driven full-stack framework**. You declare what data looks
 > **Framework model**: Loom is not a hosted platform. Each project clones and runs its own Loom instance. Think Django or FastAPI — a powerful core you own and extend, not a SaaS you subscribe to.
 
 One YAML file gives you:
-- A PostgreSQL/SQLite database table (via SQLAlchemy + Alembic)
+- A PostgreSQL database table (via SQLAlchemy + Alembic)
 - Full REST API: `GET`, `POST`, `PUT`, `DELETE`
 - Auto Pydantic request validation
 - Auto-generated Swagger/OpenAPI docs at `/docs`
@@ -57,7 +57,7 @@ One YAML file gives you:
 **Tech stack:**
 - **Backend**: Python 3.10+, FastAPI, SQLAlchemy (async), Alembic, Pydantic v2
 - **Frontend**: React 18, Vite, TypeScript, TailwindCSS
-- **Database**: PostgreSQL (production / organization mode), SQLite (personal mode)
+- **Database**: PostgreSQL (required in both personal and organization modes)
 - **Auth**: JWT Bearer tokens (HS256)
 
 ---
@@ -790,7 +790,7 @@ Frontend plugins are React components in `frontend/src/pages/custom/`. The `plug
 Loom supports two execution modes controlled by env var:
 
 ```env
-LOOM_WORKSPACE_TYPE=personal      # Default: fast iteration, debug panel enabled, SQLite ok
+LOOM_WORKSPACE_TYPE=personal      # Default: fast iteration, debug panel enabled
 LOOM_WORKSPACE_TYPE=organization  # Strict RBAC, audit enforced, debug panel disabled, Postgres required
 ```
 
@@ -957,7 +957,7 @@ All settings can be set via environment variables (prefixed `LOOM_`) or a `.env`
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LOOM_APP_TITLE` | `Loom API` | API title shown in Swagger |
-| `LOOM_DATABASE_URL` | `sqlite:///./loom.db` | Database connection string |
+| `LOOM_DATABASE_URL` | `postgresql://...` | Database connection string |
 | `LOOM_JWT_SECRET` | `your-secret-key` | JWT signing secret. **Change in production!** |
 | `LOOM_ALLOWED_ORIGINS` | `["*"]` | CORS origins. **Restrict in production!** |
 | `LOOM_BLUEPRINT_PATHS` | `["blueprints"]` | Blueprint directories to load |
@@ -975,7 +975,7 @@ LOOM_BLUEPRINT_PATHS=blueprints,blueprints_tenant
 LOOM_ENABLE_AUDIT=true
 ```
 
-> The backend auto-rewrites `postgresql://` → `postgresql+asyncpg://` and `sqlite://` → `sqlite+aiosqlite://` for async drivers.
+> The backend auto-rewrites `postgresql://` → `postgresql+asyncpg://` for async drivers.
 
 ---
 
@@ -1045,13 +1045,7 @@ alembic upgrade head
 
 ---
 
-**`No module named 'aiosqlite'`**  
-```bash
-pip install aiosqlite
-```
-Required for SQLite async support in local development.
 
----
 
 **Blueprint linter rejects my `Select` field**  
 The `options` key is required when using `type: Select`:

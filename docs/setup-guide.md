@@ -65,7 +65,7 @@ Your `my-medical-app/.env` is pre-configured for **Personal Mode**:
 `LOOM_WORKSPACE_TYPE=personal`
 
 In this mode:
-- SQLite is supported, removing the need for a Docker database during rapid prototyping.
+- A local PostgreSQL database is required. Use `docker-compose up -d db` to spin one up quickly.
 - Strict RBAC is disabled for easy iteration.
 - Blueprint hot-reload is enabled (the server resets schemas when YAMLs change).
 - The `/debug` endpoints are exposed.
@@ -91,7 +91,7 @@ Visit the API auto-docs at `http://localhost:8010/docs`. Wait for the "✅ Schem
 When deploying, or if you need to test strict Audit and RBAC behaviours, you must switch to Organization Mode.
 
 1. **Update Config**: In your project's `.env`, change `LOOM_WORKSPACE_TYPE=organization`
-2. **Setup Database**: Organization mode completely blocks SQLite. You must provide a valid PostgreSQL connection via `LOOM_DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5433/dbname`.
+2. **Setup Database**: Organization mode enforces strict auditing. You must provide your production PostgreSQL connection via `LOOM_DATABASE_URL=postgresql://user:pass@prod-db.example.com/dbname`.
 3. **Generate Migrations**: In your project directory:
    ```bash
    loom generate migration -m "Initial schema"
