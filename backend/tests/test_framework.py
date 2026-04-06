@@ -1,6 +1,4 @@
-import os
 import pytest
-from fastapi.testclient import TestClient
 from settings import Settings
 from main import create_app
 
@@ -67,7 +65,7 @@ def test_app_factory_and_blueprint_loader(mock_settings):
 
 
 def test_plugin_registry():
-    from plugin_registry import PluginRegistry, PluginManifest, HookRegistry
+    from plugin_registry import PluginRegistry, PluginManifest
 
     registry = PluginRegistry()
     manifest = PluginManifest(name="test_plugin")
