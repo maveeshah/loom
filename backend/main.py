@@ -50,15 +50,18 @@ def get_model_by_name(name: str):
     raise HTTPException(status_code=404, detail=f"Module '{name}' not found")
 
 
-def model_to_dict(instance) -> dict:
+def model_to_dict(instance, columns=None) -> dict:
     """Serialize a SQLAlchemy model instance to a plain dict, flattening the JSONB 'data' column if present."""
     result = {}
-    for c in instance.__table__.columns:
-        if c.name == "data":
-            data_val = getattr(instance, c.name) or {}
+    if columns is None:
+        columns = [c.name for c in instance.__table__.columns]
+
+    for name in columns:
+        if name == "data":
+            data_val = getattr(instance, name) or {}
             result.update(data_val)
         else:
-            result[c.name] = getattr(instance, c.name)
+            result[name] = getattr(instance, name)
     return result
 
 
@@ -441,8 +444,11 @@ def create_app(settings: Settings = None) -> FastAPI:
         result = await db.execute(records_query)
         records = result.scalars().all()
 
+        # Extract column names once to avoid repeated introspection in the loop
+        column_names = [c.name for c in model.__table__.columns]
+
         return {
-            "data": [model_to_dict(r) for r in records],
+            "data": [model_to_dict(r, columns=column_names) for r in records],
             "total": total,
             "limit": limit,
             "offset": offset,
