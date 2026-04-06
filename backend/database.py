@@ -8,10 +8,12 @@ from settings import get_settings
 settings = get_settings()
 
 DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
+
+if not DATABASE_URL.startswith("postgres"):
+    raise ValueError("Loom explicitly requires a PostgreSQL database. Please configure LOOM_DATABASE_URL.")
+
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif DATABASE_URL.startswith("sqlite://"):
-    DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 

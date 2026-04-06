@@ -42,7 +42,6 @@ def get_mode_config() -> dict:
         "audit_required": org,       # AuditLog writes are mandatory
         "blueprint_lock": org,       # Blueprint hot-reload disabled in org mode
         "debug_panel": not org,      # /debug/* endpoints only in personal mode
-        "allow_sqlite": not org,     # SQLite only valid for personal deployments
     }
 
 

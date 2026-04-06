@@ -31,14 +31,14 @@ class Settings(BaseSettings):
     #   - "blueprints"           → loom-core owned (User, Role — do not modify)
     #   - "blueprints_project"   → project-specific overrides (your domain models)
     # Override via: LOOM_BLUEPRINT_PATHS=blueprints,../my-project/blueprints
-    blueprint_paths: List[str] = ["blueprints"]
+    blueprint_paths: List[str] = ["blueprints", "blueprints_project"]
 
     # Directories (relative or absolute) to search for backend plugins.
     # The plugin system can use this to discover plugin modules.
     plugin_paths: List[str] = ["plugins"]
 
     # Database configuration
-    database_url: str = "sqlite:///./loom.db"
+    database_url: str = "postgresql://mavee:password123@localhost:5433/viemed"
 
     # Security
     jwt_secret: str = "your-secret-key"
