@@ -1,15 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../api';
-
-interface User {
-    id: number;
-    email: string;
-    full_name: string;
-    role: {
-        name: string;
-        permissions: { id: number; code: string; name: string; module: string }[];
-    };
-}
+import { User, hasPermission as checkPermission } from '../utils/authUtils';
 
 interface AuthContextType {
     user: User | null;
@@ -72,17 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const hasPermission = (permission: string) => {
-        if (!user) return false;
-        const perms = user.role?.permissions || [];
-        const permCodes = perms.map(p => p.code);
-
-        if (permCodes.includes('*:*')) return true;
-        if (permCodes.includes(permission)) return true;
-
-        const [module] = permission.split(':');
-        if (permCodes.includes(`${module}:*`)) return true;
-
-        return false;
+        return checkPermission(user, permission);
     };
 
     return (
