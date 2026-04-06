@@ -29,9 +29,26 @@ def create_pydantic_model_from_blueprint(
     if is_update:
         model_fields["id"] = (Optional[int], None)
 
+    # Normalize fields: support both list of dicts and dict of dicts
+    if isinstance(fields, dict):
+        normalized_fields = []
+        for name, definition in fields.items():
+            if isinstance(definition, dict):
+                # { "field_name": { "type": "String", ... } }
+                field_obj = {"name": name}
+                field_obj.update(definition)
+                normalized_fields.append(field_obj)
+            else:
+                # { "field_name": "String" }
+                normalized_fields.append({"name": name, "type": definition})
+        fields = normalized_fields
+
     for field in fields:
         f_name = field["name"]
-        f_type_str = field.get("type", "String")
+        # Normalize type: case-insensitive
+        f_type_raw = field.get("type", "String")
+        f_type_str = f_type_raw.capitalize() if isinstance(f_type_raw, str) else "String"
+        
         py_type = type_mapping.get(f_type_str, Any)
 
         is_required = field.get("required", False)

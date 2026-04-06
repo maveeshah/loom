@@ -70,3 +70,17 @@ class Comment(Base):
     author = Column(String, default='System User')
     created_at = Column(DateTime, default=func.now())
 
+
+class Invoice(Base):
+    __tablename__ = 'invoices'
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    data = Column(JSONB, default=dict)
+
+class Employee(Base):
+    __tablename__ = 'employees'
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    data = Column(JSONB, default=dict)
