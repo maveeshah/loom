@@ -66,7 +66,37 @@ def test_app_factory_and_blueprint_loader(mock_settings):
     assert "invoice" in slugs
 
 
-def test_plugin_registry():
+def test_load_blueprint_registry(mock_settings):
+    import main
+    from main import load_blueprint_registry
+
+    # Save original state and clear it
+    original_registry = main.blueprint_registry.copy()
+    main.blueprint_registry.clear()
+
+    try:
+        load_blueprint_registry(mock_settings)
+
+        assert len(main.blueprint_registry) == 2
+
+        # Test exact content of the registry
+        assert "patient" in main.blueprint_registry
+        assert main.blueprint_registry["patient"]["name"] == "Patient"
+        assert main.blueprint_registry["patient"]["permission_namespace"] == "patient"
+        assert main.blueprint_registry["patient"]["table_name"] == "patients"
+
+        assert "invoice" in main.blueprint_registry
+        assert main.blueprint_registry["invoice"]["name"] == "Invoice"
+        assert main.blueprint_registry["invoice"]["permission_namespace"] == "billing"
+        assert main.blueprint_registry["invoice"]["table_name"] == "invoices"
+    finally:
+        # Restore original state
+        main.blueprint_registry.clear()
+        main.blueprint_registry.update(original_registry)
+
+
+@pytest.mark.asyncio
+async def test_plugin_registry():
     from plugin_registry import PluginRegistry, PluginManifest, HookRegistry
 
     registry = PluginRegistry()
@@ -78,10 +108,10 @@ def test_plugin_registry():
     # Test hooks
     data = {"value": 1}
 
-    def my_hook(record, *args, **kwargs):
+    async def my_hook(record, *args, **kwargs):
         record["value"] = 2
 
     registry.hooks.register("patient", "before_create", my_hook)
-    registry.hooks.execute("patient", "before_create", data)
+    await registry.hooks.execute("patient", "before_create", data)
 
     assert data["value"] == 2
