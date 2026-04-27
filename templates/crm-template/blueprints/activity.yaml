@@ -1,0 +1,82 @@
+name: Activity
+slug: activity
+module: CRM
+description: "Calls, emails, meetings, and tasks"
+
+ui:
+  show_in_sidebar: true
+  icon: calendar
+  default_view: summary
+
+fields:
+  - name: type
+    label: Activity Type
+    type: Select
+    required: true
+    options:
+      - Call
+      - Email
+      - Meeting
+      - Task
+      - Note
+      - Other
+
+  - name: subject
+    label: Subject
+    type: String
+    required: true
+
+  - name: date
+    label: Date & Time
+    type: DateTime
+    default: now()
+
+  - name: duration_minutes
+    label: Duration (minutes)
+    type: Integer
+
+  - name: outcome
+    label: Outcome
+    type: Select
+    options:
+      - Completed
+      - No Answer
+      - Left Message
+      - Scheduled Follow-up
+      - Cancelled
+      - In Progress
+
+  - name: notes
+    label: Notes
+    type: Text
+
+  - name: is_completed
+    label: Completed
+    type: Boolean
+    default: false
+
+associations:
+  - type: belongs_to
+    target: Company
+    foreign_key: company_id
+
+  - type: belongs_to
+    target: Contact
+    foreign_key: contact_id
+
+  - type: belongs_to
+    target: Deal
+    foreign_key: deal_id
+
+views:
+  - name: Summary
+    id: summary
+    type: summary
+
+  - name: Comments
+    id: comments
+    type: comments
+
+  - name: History
+    id: history
+    type: history

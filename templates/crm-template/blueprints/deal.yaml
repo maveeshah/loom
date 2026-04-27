@@ -1,0 +1,102 @@
+name: Deal
+slug: deal
+module: CRM
+description: "Sales opportunities and pipeline"
+
+ui:
+  show_in_sidebar: true
+  icon: dollar-sign
+  default_view: summary
+
+fields:
+  - name: title
+    label: Deal Title
+    type: String
+    required: true
+
+  - name: value
+    label: Deal Value ($)
+    type: Float
+    default: 0.0
+
+  - name: currency
+    label: Currency
+    type: Select
+    options:
+      - USD
+      - EUR
+      - GBP
+    default: USD
+
+  - name: stage
+    label: Stage
+    type: Select
+    required: true
+    options:
+      - Lead
+      - Qualified
+      - Proposal
+      - Negotiation
+      - Closed Won
+      - Closed Lost
+    default: Lead
+
+  - name: probability
+    label: Probability (%)
+    type: Integer
+    default: 10
+
+  - name: expected_close_date
+    label: Expected Close Date
+    type: Date
+
+  - name: actual_close_date
+    label: Actual Close Date
+    type: Date
+
+  - name: source
+    label: Lead Source
+    type: Select
+    options:
+      - Website
+      - Referral
+      - Cold Call
+      - Trade Show
+      - Social Media
+      - Email Campaign
+      - Other
+
+  - name: description
+    label: Description
+    type: Text
+
+associations:
+  - type: belongs_to
+    target: Company
+    foreign_key: company_id
+
+  - type: belongs_to
+    target: Contact
+    foreign_key: primary_contact_id
+
+  - type: has_many
+    target: Activity
+    foreign_key: deal_id
+
+views:
+  - name: Summary
+    id: summary
+    type: summary
+
+  - name: Activities
+    id: activities
+    type: association
+    target: Activity
+
+  - name: Comments
+    id: comments
+    type: comments
+
+  - name: History
+    id: history
+    type: history

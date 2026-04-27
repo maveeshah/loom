@@ -1,0 +1,102 @@
+name: Company
+slug: company
+module: CRM
+description: "Organizations and businesses in your CRM"
+
+ui:
+  show_in_sidebar: true
+  icon: building
+  default_view: summary
+
+fields:
+  - name: name
+    label: Company Name
+    type: String
+    required: true
+
+  - name: industry
+    label: Industry
+    type: Select
+    options:
+      - Technology
+      - Healthcare
+      - Finance
+      - Manufacturing
+      - Retail
+      - Education
+      - Other
+
+  - name: size
+    label: Company Size
+    type: Select
+    options:
+      - 1-10 employees
+      - 11-50 employees
+      - 51-200 employees
+      - 201-500 employees
+      - 500+ employees
+
+  - name: website
+    label: Website
+    type: URL
+
+  - name: phone
+    label: Phone
+    type: PhoneNumber
+
+  - name: address
+    label: Address
+    type: Text
+
+  - name: status
+    label: Status
+    type: Select
+    required: true
+    options:
+      - Prospect
+      - Customer
+      - Partner
+      - Lost
+      - Archived
+    default: Prospect
+
+associations:
+  - type: has_many
+    target: Contact
+    foreign_key: company_id
+
+  - type: has_many
+    target: Deal
+    foreign_key: company_id
+
+  - type: has_many
+    target: Activity
+    foreign_key: company_id
+
+views:
+  - name: Summary
+    id: summary
+    type: summary
+
+  - name: Contacts
+    id: contacts
+    type: association
+    target: Contact
+
+  - name: Deals
+    id: deals
+    type: association
+    target: Deal
+
+  - name: Activities
+    id: activities
+    type: association
+    target: Activity
+
+  - name: Comments
+    id: comments
+    type: comments
+
+  - name: History
+    id: history
+    type: history
