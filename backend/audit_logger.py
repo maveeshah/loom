@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+import logging
 
-# Local imports since log_audit needs to lookup the model
-# We'll import get_model_by_name dynamically if needed or just use models directly
+logger = logging.getLogger("loom.audit")
+
 
 def log_audit(
     db: AsyncSession,
@@ -16,7 +17,7 @@ def log_audit(
     if model_name.lower() in ("auditlog", "comment"):
         return
     try:
-        from main import get_model_by_name # Safe import inside function to avoid circular dep
+        from main import get_model_by_name  # Safe import inside function to avoid circular dep
         AuditModel = get_model_by_name("AuditLog")
         log = AuditModel(
             model_name=model_name,
@@ -27,5 +28,6 @@ def log_audit(
             timestamp=datetime.utcnow(),
         )
         db.add(log)
+        logger.debug(f"Audit logged: {model_name}#{record_id} {action} by {actor}")
     except Exception as e:
-        print(f"Failed to log audit: {e}")
+        logger.error(f"Failed to log audit for {model_name}#{record_id}: {e}")

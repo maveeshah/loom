@@ -86,7 +86,7 @@ docker --version    # Docker 24+
 
 ```bash
 git clone <repo-url>
-cd viemed
+cd loom
 ```
 
 ### Step 2: Python virtual environment
@@ -101,7 +101,7 @@ pip install -r requirements.txt
 ### Step 3: Set up the database
 
 ```bash
-# From the /viemed root:
+# From the /loom root:
 ./make_migrations.sh
 
 # Then apply migrations:
@@ -167,7 +167,7 @@ docker-compose exec backend alembic upgrade head  # Run pending migrations
 ## 5. Project Structure
 
 ```
-viemed/
+loom/
 ├── backend/
 │   ├── blueprints/             ← Core blueprints (loom-owned: User, Role — do not modify)
 │   │   └── README.md           ← Blueprint ownership rules
@@ -241,7 +241,7 @@ viemed/
 
 A blueprint is a YAML file placed inside `backend/blueprints_project/` (your domain models) or `backend/blueprints/` (loom-core only). It is the **single source of truth** for an entity.
 
-> **Ownership rule**: Only `user.yaml` and `role.yaml` live in `blueprints/`. All your domain models (`patient.yaml`, `invoice.yaml`, etc.) go in `blueprints_project/`. See [`blueprints/README.md`](file:///home/mavee/viemed/backend/blueprints/README.md) for full rules.
+> **Ownership rule**: Only `user.yaml` and `role.yaml` live in `blueprints/`. All your domain models (`patient.yaml`, `invoice.yaml`, etc.) go in `blueprints_project/`. See [`blueprints/README.md`](file:///home/mavee/loom/backend/blueprints/README.md) for full rules.
 
 ### Minimal Blueprint
 

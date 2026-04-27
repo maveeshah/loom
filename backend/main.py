@@ -9,21 +9,28 @@ import glob
 import yaml
 import inspect
 import importlib
+import logging
 from auth_utils import get_current_user, check_permissions
 import auth_router
 from typing import Dict
 import admin_router
 import settings_router
+import health_router
 from plugin_registry import registry
 from schema_factory import create_pydantic_model_from_blueprint
 from audit_logger import log_audit
 from execution_mode import get_mode_config
+from logging_config import setup_logging
+from middleware import SecurityHeadersMiddleware, RequestLoggingMiddleware, RateLimitMiddleware
 
 from settings import get_settings, Settings
 
 
 # Global mapping for blueprints data to help resolve namespaces and models
 blueprint_registry: Dict[str, dict] = {}
+
+# Setup structured logging
+logger = logging.getLogger("loom.main")
 
 
 def load_blueprint_registry(settings: Settings):
@@ -107,11 +114,20 @@ def create_app(settings: Settings = None) -> FastAPI:
         if watch_task:
             watch_task.cancel()
 
+    # Setup logging
+    json_logs = mode_config.get("strict_rbac", False)  # JSON logs in production
+    setup_logging(level="INFO" if mode_config.get("strict_rbac") else "DEBUG", json_format=json_logs)
+
     app = FastAPI(
         title=settings.app_title,
         description=f"Running in **{mode_label}** mode. Debug panel: {'disabled' if not mode_config.get('debug_panel') else 'enabled'}.",
         lifespan=lifespan_handler,
+        version="0.1.0b1",
     )
+
+    # Add security middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
 
     # Initialize blueprint registry
     load_blueprint_registry(settings)
@@ -134,6 +150,7 @@ def create_app(settings: Settings = None) -> FastAPI:
     app.include_router(auth_router.router, prefix="/v1")
     app.include_router(admin_router.router, prefix="/v1")
     app.include_router(settings_router.router, prefix="/v1")
+    app.include_router(health_router.router)
 
     # Include Debug Router (Personal Mode Only)
     if mode_config.get("debug_panel"):
@@ -144,7 +161,7 @@ def create_app(settings: Settings = None) -> FastAPI:
     for plugin_name, manifest in registry.plugins.items():
         if manifest.router:
             core_router.include_router(manifest.router)
-            print(f"Loaded plugin router for {plugin_name}")
+            logger.info(f"Loaded plugin router for {plugin_name}")
 
     # ─── Custom Routers (Overrides) ──────────────────────────────────────
     # Load any custom router overrides specifically mentioned in blueprints
@@ -157,10 +174,10 @@ def create_app(settings: Settings = None) -> FastAPI:
                 module = importlib.import_module(module_name)
                 if hasattr(module, "router"):
                     app.include_router(module.router)
-                    print(f"Loaded custom router for {bp['name']} from {override_path}")
+                    logger.info(f"Loaded custom router for {bp['name']} from {override_path}")
             except ModuleNotFoundError as e:
-                print(
-                    f"Warning: Could not load router override {override_path} for {bp['name']}: {e}"
+                logger.warning(
+                    f"Could not load router override {override_path} for {bp['name']}: {e}"
                 )
 
     @core_router.get("/modules")

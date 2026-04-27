@@ -1,9 +1,11 @@
 from typing import List, Callable, Dict, Optional
 from fastapi import APIRouter
 import importlib
-
+import logging
 
 import inspect
+
+logger = logging.getLogger("loom.plugins")
 
 class HookRegistry:
     def __init__(self):
@@ -27,7 +29,7 @@ class HookRegistry:
                     handler(*args, **kwargs)
             except Exception as e:
                 # Decide if hooks should fail the original request or just log
-                print(f"Error in hook {key}: {e}")
+                logger.error(f"Error in hook {key}: {e}")
                 raise e
 
 
@@ -50,7 +52,7 @@ class PluginRegistry:
 
     def register_plugin(self, manifest: PluginManifest):
         self.plugins[manifest.name] = manifest
-        print(f"Registered plugin: {manifest.name}")
+        logger.info(f"Registered plugin: {manifest.name}")
 
     def discover_plugins(self, plugin_paths: List[str]):
         """
@@ -80,7 +82,7 @@ class PluginRegistry:
                     except ModuleNotFoundError:
                         pass
                     except Exception as e:
-                        print(f"Failed to load plugin {item}: {e}")
+                        logger.error(f"Failed to load plugin {item}: {e}")
 
 
 # Global registry instance

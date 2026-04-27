@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import List
 from pydantic_settings import BaseSettings
@@ -38,11 +39,14 @@ class Settings(BaseSettings):
     # The plugin system can use this to discover plugin modules.
     plugin_paths: List[str] = ["plugins"]
 
-    # Database configuration
-    database_url: str = "postgresql://mavee:password123@localhost:5433/viemed"
+    # Database configuration - defaults to local Postgres for development
+    database_url: str = os.getenv(
+        "LOOM_DATABASE_URL",
+        "postgresql://loom_user:loom_pass@localhost:5432/loom_db"
+    )
 
-    # Security
-    jwt_secret: str = "your-secret-key"
+    # Security - MUST be overridden in production via LOOM_JWT_SECRET
+    jwt_secret: str = os.getenv("LOOM_JWT_SECRET", "dev-secret-replace-in-production")
 
     # API Prefix
     api_prefix: str = "/v1"
