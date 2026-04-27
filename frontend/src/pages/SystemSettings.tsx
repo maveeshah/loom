@@ -74,17 +74,17 @@ export default function SystemSettings() {
                             <Form.Item
                                 label="Platform Name"
                                 name="platform_name"
-                                initialValue="Viemed"
+                                initialValue="Loom"
                             >
-                                <Input prefix={<AppstoreOutlined className="text-slate-400" />} placeholder="Viemed" size="large" />
+                                <Input prefix={<AppstoreOutlined className="text-slate-400" />} placeholder="Loom" size="large" />
                             </Form.Item>
 
                             <Form.Item
                                 label="Support Email"
                                 name="support_email"
-                                initialValue="support@viemed.com"
+                                initialValue="support@loom.com"
                             >
-                                <Input placeholder="support@viemed.com" size="large" />
+                                <Input placeholder="support@loom.com" size="large" />
                             </Form.Item>
                         </div>
                     </Card>

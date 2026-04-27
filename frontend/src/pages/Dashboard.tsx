@@ -79,7 +79,7 @@ export default function Dashboard() {
                         title="Environment"
                         value="Production"
                         icon={<GlobalOutlined />}
-                        description="Viemed Live Infrastructure"
+                        description="Loom Live Infrastructure"
                     />
                 </Col>
             </Row>

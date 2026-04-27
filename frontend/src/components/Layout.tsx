@@ -159,7 +159,7 @@ export default function Layout({ children }: LayoutProps) {
                         </motion.div>
                         {!collapsed && (
                             <Title level={4} className="!m-0 text-xl font-black tracking-tight text-slate-800">
-                                Viemed
+                                Loom
                             </Title>
                         )}
                     </div>
