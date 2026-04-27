@@ -4,19 +4,20 @@ Welcome to the Loom Platform documentation. Loom is an internal, configuration-d
 
 The core philosophy of Loom is **Blueprint-driven Development**: Instead of writing boilerplate CRUD code for every new entity, developers define the entity structure in YAML blueprints. The backend automatically generates REST APIs and database integrations, while the frontend dynamically renders tables, forms, and views based on those definitions.
 
-## Architecture & Concepts
+## Documentation
 
-Loom is explicitly designed with a clear separation of concerns, ensuring internal teams can safely build on top of its core.
-- **Core**: Stable, reusable backend generic CRUD, auth, and frontend layouts.
-- **Plugins**: Explicit, well-documented backend and frontend extension points.
-- **Product/Tenant**: Concrete applications defined by blueprints and custom plugins.
+📚 **[Complete Documentation →](docs/)**
 
-Please refer to the following guides for detailed information:
+New to Loom? Start with our comprehensive guides:
+- **[Quickstart Guide](docs/quickstart/installation.md)** — Install and build your first app in 5 minutes
+- **[Blueprint Reference](docs/blueprint/fields.md)** — Every field type explained with examples
+- **[CLI Reference](docs/cli/init.md)** — All commands documented
+- **[Troubleshooting](docs/troubleshooting/faq.md)** — Common issues solved
+
+Also see:
 - [Architecture & Boundaries](docs/architecture.md)
-- [Blueprints Reference](docs/blueprints.md)
-- [Backend Framework Guide](docs/backend-framework.md)
-- [Frontend Framework Guide](docs/frontend-framework.md)
-- [Plugins Overview](docs/plugins.md)
+- [Developer Guide](docs/developer-guide.md)
+- [Templates](templates/)
 
 ## Quickstart (Framework Mode)
 
@@ -63,7 +64,47 @@ loom run dev
 
 The backend API will be available at [http://localhost:8010/docs](http://localhost:8010/docs).
 
-> **Note**: For production ("organization" mode) with strict RBAC, Postgres, and Docker Compose deployments, see the [Setup Guide](docs/setup-guide.md).
+> **Note**: For production ("organization" mode) with strict RBAC, Postgres, and Docker Compose deployments, see the [Setup Guide](docs/setup-guide.md) and [Security Guide](SECURITY.md).
+
+## Production Deployment
+
+### Quick Production Setup
+
+1. **Clone and configure:**
+```bash
+git clone https://github.com/your-org/loom.git
+cd loom
+cp .env.example .env
+# Edit .env with your secure values
+```
+
+2. **Generate secure secrets:**
+```bash
+# Generate JWT secret
+openssl rand -hex 32
+# Add to .env: LOOM_JWT_SECRET=<generated_value>
+```
+
+3. **Deploy with Docker Compose:**
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+4. **Verify health:**
+```bash
+curl http://localhost:8000/health
+```
+
+### Security Checklist
+
+See [SECURITY.md](SECURITY.md) for comprehensive security guidelines.
+
+Key requirements:
+- [ ] Change default JWT secret
+- [ ] Set `LOOM_WORKSPACE_TYPE=organization`
+- [ ] Configure `LOOM_ALLOWED_ORIGINS`
+- [ ] Use strong database passwords
+- [ ] Enable HTTPS
 
 ## Out of the Box Functionality
 
