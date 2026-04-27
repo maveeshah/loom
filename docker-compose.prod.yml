@@ -1,0 +1,87 @@
+# Production Docker Compose for Loom Framework
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${DB_USER:-loom_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme_in_production}
+      - POSTGRES_DB=${DB_NAME:-loom_db}
+    networks:
+      - loom_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-loom_user} -d ${DB_NAME:-loom_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    environment:
+      - LOOM_DATABASE_URL=postgresql://${DB_USER:-loom_user}:${DB_PASSWORD:-changeme_in_production}@db:5432/${DB_NAME:-loom_db}
+      - LOOM_JWT_SECRET=${JWT_SECRET:-generate_a_secure_random_secret}
+      - LOOM_WORKSPACE_TYPE=organization
+      - LOOM_ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://yourdomain.com}
+      - LOOM_ENABLE_AUDIT=true
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${TOKEN_EXPIRY:-60}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    networks:
+      - loom_network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    environment:
+      - VITE_API_URL=http://backend:8000
+    networks:
+      - loom_network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Optional: Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    networks:
+      - loom_network
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  loom_network:
+    driver: bridge
